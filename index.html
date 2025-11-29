@@ -172,21 +172,22 @@
       const MAXPARTICLENUM = WC * WC;
       const ctr = {
         is_pp: true,
-        hue: 0.5,
-        timespeed: 0.1,
-        bias: 0.5,
-        count: 200035,
-        capsule: 0.1,
-        master_size: 0.1,
-        master_power: 2,
+        hue: 1,
+        timespeed: 2,
+        bias: 0.2,
+        count: 300035,
+        capsule: 1.1,
+        master_size: 0.6,
+        master_power: 0.32,
         spin_scale: 1.5,
         spin_speed: 1,
         shaggy: 2,
-        master_metabolism: 2,
+        master_metabolism: 1,
       };
       let configTween = null;
       let lastPPState = ctr.is_pp;
       let cachedInitial = null;
+      uni_use_original_colors.value = 1;
 
       // Create the main GUI controller
       const gui = new GUI({ title: "בקרי ניסוי" });
