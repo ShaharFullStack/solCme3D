@@ -313,7 +313,7 @@
               spin_scale: 0.5,
               master_metabolism: 2,
             },
-            900
+            10
           );
 
           // Enable original colors
@@ -454,16 +454,49 @@
         ctr.hue = 0.5;
         ctr.timespeed = 0;
 
-        // Reset particle data using cached model sample when available
-        if (cachedInitial) {
-          f32_org.set(cachedInitial.org);
-          f32_color.set(cachedInitial.color);
-          tex_org.needsUpdate = true;
-          tex_color.needsUpdate = true;
-          my_time = 0; // trigger init phase
-          console.log("Shape reset from cached GLB sample");
-        } else {
-          console.warn("No cached GLB sample found; keeping current particle layout");
+        // Reload the GLB model to reset particle positions
+        try {
+          const loader = new GLTFLoader();
+          const gltf = await loader.loadAsync("./solCme_logo.glb");
+
+          const geometries = [];
+          gltf.scene.updateMatrixWorld(true);
+
+          gltf.scene.traverse((child) => {
+            if (child.isMesh) {
+              const clonedGeo = child.geometry.clone();
+              clonedGeo.applyMatrix4(child.matrixWorld);
+              geometries.push(clonedGeo);
+            }
+          });
+
+          if (geometries.length) {
+            const mergedGeometry =
+              BufferGeometryUtils.mergeGeometries(geometries);
+            const mesh = new THREE.Mesh(mergedGeometry);
+            const sampler = new MeshSurfaceSampler(mesh).build();
+
+            const tempPos = new THREE.Vector3();
+            let p = 0;
+            for (let i = 0; i < MAXPARTICLENUM; i++) {
+              sampler.sample(tempPos);
+              f32_org[p] = tempPos.x * 2;
+              f32_org[p + 1] = tempPos.y * 2;
+              f32_org[p + 2] = tempPos.z * 2;
+              f32_org[p + 3] = tempPos.length() * 0.5;
+              p += 4;
+            }
+
+            tex_org.needsUpdate = true;
+
+            // Reinitialize particle positions by resetting my_time to 0
+            // This triggers the init phase in the tic() function
+            my_time = 0;
+
+            console.log("GLB shape reset successfully");
+          }
+        } catch (error) {
+          console.error("Error resetting GLB shape:", error);
         }
 
         // Update all GUI controllers
@@ -1030,10 +1063,6 @@
 
           await fillParticlesFromGltf(gltf, { defaultColor: [1, 1, 1] });
           console.log("GLB model loaded and particles sampled with texture colors");
-          cachedInitial = {
-            org: f32_org.slice(0),
-            color: f32_color.slice(0),
-          };
 
           // Start animation after model is loaded
           ren.setAnimationLoop(tic);
