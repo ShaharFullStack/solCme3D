@@ -1,498 +1,498 @@
-      import * as THREE from "three";
+import * as THREE from "three";
 
-      import {
-        Fn,
-        Discard,
-        If,
-        attribute,
-        uniform,
-        varying,
-        texture,
-        uv,
-        screenCoordinate,
-        float,
-        vec2,
-        vec3,
-        vec4,
-        mat4,
-        fract,
-        floor,
-        abs,
-        negate,
-        clamp,
-        max,
-        mix,
-        dot,
-        step,
-        smoothstep,
-        length,
-        sqrt,
-        normalize,
-        sin,
-        cos,
-        reflect,
-        positionView,
-        positionWorld,
-        positionGeometry,
-        normalWorld,
-        modelViewMatrix,
-        modelWorldMatrix,
-        cameraPosition,
-        cameraProjectionMatrix,
-        cameraViewMatrix,
-      } from "three/tsl";
+import {
+  Fn,
+  Discard,
+  If,
+  attribute,
+  uniform,
+  varying,
+  texture,
+  uv,
+  screenCoordinate,
+  float,
+  vec2,
+  vec3,
+  vec4,
+  mat4,
+  fract,
+  floor,
+  abs,
+  negate,
+  clamp,
+  max,
+  mix,
+  dot,
+  step,
+  smoothstep,
+  length,
+  sqrt,
+  normalize,
+  sin,
+  cos,
+  reflect,
+  positionView,
+  positionWorld,
+  positionGeometry,
+  normalWorld,
+  modelViewMatrix,
+  modelWorldMatrix,
+  cameraPosition,
+  cameraProjectionMatrix,
+  cameraViewMatrix,
+} from "three/tsl";
 
-      import Stats from "three/addons/libs/stats.module.js";
-      import { GUI } from "three/addons/libs/lil-gui.module.min.js";
-      import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-      import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.176.0/examples/jsm/loaders/GLTFLoader.js";
-      import { MeshSurfaceSampler } from "https://cdn.jsdelivr.net/npm/three@0.176.0/examples/jsm/math/MeshSurfaceSampler.js";
-      import * as BufferGeometryUtils from "https://cdn.jsdelivr.net/npm/three@0.176.0/examples/jsm/utils/BufferGeometryUtils.js";
+import Stats from "three/addons/libs/stats.module.js";
+import { GUI } from "three/addons/libs/lil-gui.module.min.js";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.176.0/examples/jsm/loaders/GLTFLoader.js";
+import { MeshSurfaceSampler } from "https://cdn.jsdelivr.net/npm/three@0.176.0/examples/jsm/math/MeshSurfaceSampler.js";
+import * as BufferGeometryUtils from "https://cdn.jsdelivr.net/npm/three@0.176.0/examples/jsm/utils/BufferGeometryUtils.js";
 
-      let i, p;
-      let a;
-      let o;
-      let my_time = -1,
-        spin_time = 0;
+let i, p;
+let a;
+let o;
+let my_time = -1,
+  spin_time = 0;
 
-      const uni_hue = uniform(0);
-      const uni_bias = uniform(0);
+const uni_hue = uniform(0);
+const uni_bias = uniform(0);
 
-      const uni_cap_r = uniform(0); //★ קצה רדיוס צורת הכמוסה. 1.0 זה כדור. קטן יותר הופך למוט דק.
-      const uni_master_size = uniform(0);
-      const uni_master_power = uniform(0);
-      const uni_spin_scale = uniform(0);
-      const uni_spin_time = uniform(0);
-      const uni_shaggy = uniform(0);
-      const uni_master_metabolism = uniform(0);
+const uni_cap_r = uniform(0); //★ קצה רדיוס צורת הכמוסה. 1.0 זה כדור. קטן יותר הופך למוט דק.
+const uni_master_size = uniform(0);
+const uni_master_power = uniform(0);
+const uni_spin_scale = uniform(0);
+const uni_spin_time = uniform(0);
+const uni_shaggy = uniform(0);
+const uni_master_metabolism = uniform(0);
 
-      const uni_time = uniform(0);
-      const uni_shadow_matrix = uniform(mat4());
-      const uni_shadow_camera_world_matrix = uniform(mat4());
-      const uni_light_pos_view = uniform(vec3());
-      const uni_light_dir_view = uniform(vec3());
-      const uni_light_pos = uniform(vec3());
-      const uni_light_dir = uniform(vec3());
-      const uni_light_col = uniform(vec3());
-      const uni_bg_col = uniform(vec3());
+const uni_time = uniform(0);
+const uni_shadow_matrix = uniform(mat4());
+const uni_shadow_camera_world_matrix = uniform(mat4());
+const uni_light_pos_view = uniform(vec3());
+const uni_light_dir_view = uniform(vec3());
+const uni_light_pos = uniform(vec3());
+const uni_light_dir = uniform(vec3());
+const uni_light_col = uniform(vec3());
+const uni_bg_col = uniform(vec3());
 
-      const uni_wh = uniform(vec2());
+const uni_wh = uniform(vec2());
 
-      const uni_blur_v = uniform(vec2());
+const uni_blur_v = uniform(vec2());
 
-      const uni_use_original_colors = uniform(0); // 0 = procedural, 1 = original
+const uni_use_original_colors = uniform(0); // 0 = procedural, 1 = original
 
-      // =============================================================================== //
-      const con = document.getElementById("container_1");
+// =============================================================================== //
+const con = document.getElementById("container_1");
 
-      //const dpr = 1;
-      const dpr = window.devicePixelRatio;
-      const ren = new THREE.WebGPURenderer({
-        preserveDrawingBuffer: true,
-      });
-      ren.toneMapping = THREE.NoToneMapping;
-      //ren.toneMapping = THREE.ACESFilmicToneMapping;
-      //ren.outputColorSpace = THREE.SRGBColorSpace;
-      ren.outputColorSpace = "";
-      ren.setPixelRatio(dpr);
-      // Animation loop will be started after GLB loads
-      //ren.autoClear = false;
-      //ren.setClearColor( 0xffffff, 1);
-      //ren.getContext().getExtension( "EXT_frag_depth");
-      //ren.debug.checkShaderErrors = true;
+//const dpr = 1;
+const dpr = window.devicePixelRatio;
+const ren = new THREE.WebGPURenderer({
+  preserveDrawingBuffer: true,
+});
+ren.toneMapping = THREE.NoToneMapping;
+//ren.toneMapping = THREE.ACESFilmicToneMapping;
+//ren.outputColorSpace = THREE.SRGBColorSpace;
+ren.outputColorSpace = "";
+ren.setPixelRatio(dpr);
+// Animation loop will be started after GLB loads
+//ren.autoClear = false;
+//ren.setClearColor( 0xffffff, 1);
+//ren.getContext().getExtension( "EXT_frag_depth");
+//ren.debug.checkShaderErrors = true;
 
-      const can = ren.domElement;
-      con.appendChild(can);
+const can = ren.domElement;
+con.appendChild(can);
 
-      const scene = new THREE.Scene();
-      scene.backgroundNode = vec4(uni_bg_col, 1);
+const scene = new THREE.Scene();
+scene.backgroundNode = vec4(uni_bg_col, 1);
 
-      // Adjust FOV and camera distance based on screen size for better mobile experience
-      const isMobile = window.innerWidth < 768;
-      const fov = isMobile ? 75 : 60;  // Wider FOV on mobile to see more
-      const cam = new THREE.PerspectiveCamera(fov, 1, 0.01, 100);
-      const initialDistance = isMobile ? 4.5 : 3;  // Move camera further back on mobile
-      cam.position.set(0, 0, initialDistance);
+// Adjust FOV and camera distance based on screen size for better mobile experience
+const isMobile = window.innerWidth < 768;
+const fov = isMobile ? 75 : 60;  // Wider FOV on mobile to see more
+const cam = new THREE.PerspectiveCamera(fov, 1, 0.01, 100);
+const initialDistance = isMobile ? 4.5 : 3;  // Move camera further back on mobile
+cam.position.set(0, 0, initialDistance);
 
-      // =============================================================================== //
-      const my_stats = new Stats();
-      con.appendChild(my_stats.dom);
+// =============================================================================== //
+const my_stats = new Stats();
+con.appendChild(my_stats.dom);
 
-      // =============================================================================== //
-      const WC = 1024;
-      const MAXPARTICLENUM = WC * WC;
-      const ctr = {
-        is_pp: true,
-        hue: 1,
+// =============================================================================== //
+const WC = 1024;
+const MAXPARTICLENUM = WC * WC;
+const ctr = {
+  is_pp: true,
+  hue: 1,
+  timespeed: 2,
+  bias: 0.2,
+  count: 300035,
+  capsule: 1.1,
+  master_size: 0.6,
+  master_power: 0.32,
+  spin_scale: 1.5,
+  spin_speed: 1,
+  shaggy: 2,
+  master_metabolism: 1,
+};
+let configTween = null;
+let lastPPState = ctr.is_pp;
+let cachedInitial = null;
+uni_use_original_colors.value = 1;
+
+// Create the main GUI controller
+const gui = new GUI({ title: "בקרי ניסוי" });
+gui.domElement.classList.add("custom-gui"); // Main controls folder
+gui.domElement.style.display = 'none'; // Hide old GUI, we'll use custom panel
+const mainFolder = gui.addFolder("בקרים ראשיים");
+mainFolder
+  .add(ctr, "is_pp")
+  .name("זוהר")
+  .onChange(() => {
+    updateDisplayStatus();
+  });
+mainFolder
+  .add(ctr, "timespeed", 0, 2, 0.01)
+  .name("מהירות זמן")
+  .onChange(() => {
+    updateDisplayStatus();
+  });
+mainFolder.open();
+// Visual effects folder
+const visualFolder = gui.addFolder("אפקטים חזותיים");
+visualFolder
+  .add(ctr, "hue", 0, 1, 0.01)
+  .name("גוון")
+  .onChange(() => {
+    updateDisplayStatus();
+  });
+visualFolder
+  .add(ctr, "bias", 0.001, 0.2, 0.001)
+  .name("היסט צל")
+  .onChange(() => {
+    updateDisplayStatus();
+  });
+
+// Camera controls folder
+const cameraFolder = gui.addFolder("בקרי מצלמה");
+const cameraPresets = {
+  "מבט ישר": function () {
+    cam.position.set(-1.4, 0.2, 10);
+    my_orbit_controls.target.set(0, 0, 0);
+    my_orbit_controls.update();
+  },
+  "מבט מלמעלה": function () {
+    cam.position.set(0, 3, 0.5);
+    my_orbit_controls.target.set(0, 0, 0);
+    my_orbit_controls.update();
+  },
+  "מבט קרוב": function () {
+    cam.position.set(-0.5, 0.3, 1.2);
+    my_orbit_controls.target.set(0, 0, 0);
+    my_orbit_controls.update();
+  },
+};
+
+// Add camera preset buttons
+for (const name in cameraPresets) {
+  cameraFolder.add(cameraPresets, name);
+} // Particles folder
+const particlesFolder = gui.addFolder("חלקיקים");
+particlesFolder
+  .add(ctr, "count", 0, MAXPARTICLENUM, 1)
+  .name("כמות")
+  .onChange(() => {
+    updateDisplayStatus();
+  });
+particlesFolder
+  .add(ctr, "capsule", 0, 2, 0.01)
+  .name("קפסולה")
+  .onChange(() => {
+    updateDisplayStatus();
+  });
+particlesFolder
+  .add(ctr, "master_size", 0, 2, 0.01)
+  .name("גודל")
+  .onChange(() => {
+    updateDisplayStatus();
+  });
+particlesFolder
+  .add(ctr, "master_power", 0, 2, 0.01)
+  .name("עוצמה")
+  .onChange(() => {
+    updateDisplayStatus();
+  });
+// Advanced motion folder (inside particles folder)
+const motionFolder = particlesFolder.addFolder("תנועה מתקדמת");
+motionFolder
+  .add(ctr, "spin_scale", 0, 2, 0.01)
+  .name("קנה מידה סיבוב")
+  .onChange(() => {
+    updateDisplayStatus();
+  });
+motionFolder
+  .add(ctr, "spin_speed", 0, 2, 0.01)
+  .name("מהירות סיבוב")
+  .onChange(() => {
+    updateDisplayStatus();
+  });
+motionFolder
+  .add(ctr, "shaggy", 0, 2, 0.01)
+  .name("פרוע")
+  .onChange(() => {
+    updateDisplayStatus();
+  });
+motionFolder
+  .add(ctr, "master_metabolism", 0, 2, 0.01)
+  .name("חילוף חומרים")
+  .onChange(() => {
+    updateDisplayStatus();
+  });
+// Presets folder
+const presetsFolder = gui.addFolder("הגדרות מוכנות");
+const presets = {
+  "מצב קלאסי": async function () {
+    // Smooth transition only; reuse already-loaded GLB data
+    smoothSetConfig(
+      {
         timespeed: 2,
-        bias: 0.2,
-        count: 300035,
-        capsule: 1.1,
-        master_size: 0.6,
-        master_power: 0.32,
-        spin_scale: 1.5,
-        spin_speed: 1,
-        shaggy: 2,
-        master_metabolism: 1,
-      };
-      let configTween = null;
-      let lastPPState = ctr.is_pp;
-      let cachedInitial = null;
-      uni_use_original_colors.value = 1;
+        hue: 1,
+        master_power: 2,
+        shaggy: 0,
+        spin_speed: 0,
+        count: 600000,
+        capsule: 1,
+        master_size: 0.5,
+        spin_scale: 0.5,
+        master_metabolism: 2,
+      },
+      10
+    );
 
-      // Create the main GUI controller
-      const gui = new GUI({ title: "בקרי ניסוי" });
-      gui.domElement.classList.add("custom-gui"); // Main controls folder
-      gui.domElement.style.display = 'none'; // Hide old GUI, we'll use custom panel
-      const mainFolder = gui.addFolder("בקרים ראשיים");
-      mainFolder
-        .add(ctr, "is_pp")
-        .name("זוהר")
-        .onChange(() => {
-          updateDisplayStatus();
-        });
-      mainFolder
-        .add(ctr, "timespeed", 0, 2, 0.01)
-        .name("מהירות זמן")
-        .onChange(() => {
-          updateDisplayStatus();
-        });
-      mainFolder.open();
-      // Visual effects folder
-      const visualFolder = gui.addFolder("אפקטים חזותיים");
-      visualFolder
-        .add(ctr, "hue", 0, 1, 0.01)
-        .name("גוון")
-        .onChange(() => {
-          updateDisplayStatus();
-        });
-      visualFolder
-        .add(ctr, "bias", 0.001, 0.2, 0.001)
-        .name("היסט צל")
-        .onChange(() => {
-          updateDisplayStatus();
-        });
+    // Enable original colors
+    uni_use_original_colors.value = 1;
 
-      // Camera controls folder
-      const cameraFolder = gui.addFolder("בקרי מצלמה");
-      const cameraPresets = {
-        "מבט ישר": function () {
-          cam.position.set(-1.4, 0.2, 10);
-          my_orbit_controls.target.set(0, 0, 0);
-          my_orbit_controls.update();
-        },
-        "מבט מלמעלה": function () {
-          cam.position.set(0, 3, 0.5);
-          my_orbit_controls.target.set(0, 0, 0);
-          my_orbit_controls.update();
-        },
-        "מבט קרוב": function () {
-          cam.position.set(-0.5, 0.3, 1.2);
-          my_orbit_controls.target.set(0, 0, 0);
-          my_orbit_controls.update();
-        },
-      };
+    updateDisplayStatus();
+  },
+  "מצב צבעוני": function () {
+    ctr.hue = 0.5;
+    ctr.master_power = 1.2;
+    ctr.shaggy = 1.4;
+    ctr.spin_speed = 1.5;
+    updateDisplayStatus();
+  },
+  "מצב פראי": function () {
+    ctr.hue = 0.8;
+    ctr.master_power = 1.9;
+    ctr.bias = 0.5;
+    ctr.count = 250000;
+    ctr.capsule = 0.5;
+    ctr.master_size = 0.5;
+    ctr.spin_scale = 0.5;
+    ctr.timespeed = 1;
+    ctr.shaggy = 2;
+    ctr.spin_speed = 1.8;
+    updateDisplayStatus();
+  },
+  "מהירות נמוכה": function () {
+    ctr.timespeed = 0.5;
+    ctr.spin_speed = 0.5;
+    ctr.master_metabolism = 0.5;
+    updateDisplayStatus();
+  },
+  "מהירות גבוהה": function () {
+    ctr.timespeed = 1.8;
+    ctr.spin_speed = 1.8;
+    ctr.master_metabolism = 1.5;
+    updateDisplayStatus();
+  },
+  "טורוס גדול": function () {
+    ctr.count = 0.7 * MAXPARTICLENUM;
+    ctr.capsule = 0.3;
+    ctr.master_size = 1.5;
+    ctr.spin_scale = 0.6;
+    updateDisplayStatus();
+  },
+  "שובל ארוך": function () {
+    ctr.capsule = 2;
+    ctr.master_size = 1.2;
+    ctr.spin_scale = 1.8;
+    ctr.master_metabolism = 0.4;
+    updateDisplayStatus();
+  },
+  "נקודות מינימליסטיות": function () {
+    ctr.capsule = 0.2;
+    ctr.master_size = 0.5;
+    ctr.hue = 0;
+    ctr.spin_scale = 1.5;
+    updateDisplayStatus();
+  },
+};
 
-      // Add camera preset buttons
-      for (const name in cameraPresets) {
-        cameraFolder.add(cameraPresets, name);
-      } // Particles folder
-      const particlesFolder = gui.addFolder("חלקיקים");
-      particlesFolder
-        .add(ctr, "count", 0, MAXPARTICLENUM, 1)
-        .name("כמות")
-        .onChange(() => {
-          updateDisplayStatus();
-        });
-      particlesFolder
-        .add(ctr, "capsule", 0, 2, 0.01)
-        .name("קפסולה")
-        .onChange(() => {
-          updateDisplayStatus();
-        });
-      particlesFolder
-        .add(ctr, "master_size", 0, 2, 0.01)
-        .name("גודל")
-        .onChange(() => {
-          updateDisplayStatus();
-        });
-      particlesFolder
-        .add(ctr, "master_power", 0, 2, 0.01)
-        .name("עוצמה")
-        .onChange(() => {
-          updateDisplayStatus();
-        });
-      // Advanced motion folder (inside particles folder)
-      const motionFolder = particlesFolder.addFolder("תנועה מתקדמת");
-      motionFolder
-        .add(ctr, "spin_scale", 0, 2, 0.01)
-        .name("קנה מידה סיבוב")
-        .onChange(() => {
-          updateDisplayStatus();
-        });
-      motionFolder
-        .add(ctr, "spin_speed", 0, 2, 0.01)
-        .name("מהירות סיבוב")
-        .onChange(() => {
-          updateDisplayStatus();
-        });
-      motionFolder
-        .add(ctr, "shaggy", 0, 2, 0.01)
-        .name("פרוע")
-        .onChange(() => {
-          updateDisplayStatus();
-        });
-      motionFolder
-        .add(ctr, "master_metabolism", 0, 2, 0.01)
-        .name("חילוף חומרים")
-        .onChange(() => {
-          updateDisplayStatus();
-        });
-      // Presets folder
-      const presetsFolder = gui.addFolder("הגדרות מוכנות");
-      const presets = {
-        "מצב קלאסי": async function () {
-          // Smooth transition only; reuse already-loaded GLB data
-          smoothSetConfig(
-            {
-              timespeed: 2,
-              hue: 1,
-              master_power: 2,
-              shaggy: 0,
-              spin_speed: 0,
-              count: 600000,
-              capsule: 1,
-              master_size: 0.5,
-              spin_scale: 0.5,
-              master_metabolism: 2,
-            },
-            10
-          );
+// Add presets buttons
+for (const name in presets) {
+  presetsFolder.add(presets, name);
+} // Function to update display based on settings
 
-          // Enable original colors
-          uni_use_original_colors.value = 1;
+function stopConfigTween() {
+  if (configTween && configTween.raf) cancelAnimationFrame(configTween.raf);
+  configTween = null;
+}
 
-          updateDisplayStatus();
-        },
-        "מצב צבעוני": function () {
-          ctr.hue = 0.5;
-          ctr.master_power = 1.2;
-          ctr.shaggy = 1.4;
-          ctr.spin_speed = 1.5;
-          updateDisplayStatus();
-        },
-        "מצב פראי": function () {
-          ctr.hue = 0.8;
-          ctr.master_power = 1.9;
-          ctr.bias = 0.5;
-          ctr.count = 250000;
-          ctr.capsule = 0.5;
-          ctr.master_size = 0.5;
-          ctr.spin_scale = 0.5;
-          ctr.timespeed = 1;
-          ctr.shaggy = 2;
-          ctr.spin_speed = 1.8;
-          updateDisplayStatus();
-        },
-        "מהירות נמוכה": function () {
-          ctr.timespeed = 0.5;
-          ctr.spin_speed = 0.5;
-          ctr.master_metabolism = 0.5;
-          updateDisplayStatus();
-        },
-        "מהירות גבוהה": function () {
-          ctr.timespeed = 1.8;
-          ctr.spin_speed = 1.8;
-          ctr.master_metabolism = 1.5;
-          updateDisplayStatus();
-        },
-        "טורוס גדול": function () {
-          ctr.count = 0.7 * MAXPARTICLENUM;
-          ctr.capsule = 0.3;
-          ctr.master_size = 1.5;
-          ctr.spin_scale = 0.6;
-          updateDisplayStatus();
-        },
-        "שובל ארוך": function () {
-          ctr.capsule = 2;
-          ctr.master_size = 1.2;
-          ctr.spin_scale = 1.8;
-          ctr.master_metabolism = 0.4;
-          updateDisplayStatus();
-        },
-        "נקודות מינימליסטיות": function () {
-          ctr.capsule = 0.2;
-          ctr.master_size = 0.5;
-          ctr.hue = 0;
-          ctr.spin_scale = 1.5;
-          updateDisplayStatus();
-        },
-      };
+function smoothSetConfig(target, duration = 900) {
+  stopConfigTween();
+  const keys = Object.keys(target).filter(
+    (k) => typeof ctr[k] === "number" && typeof target[k] === "number"
+  );
+  if (!keys.length) return;
 
-      // Add presets buttons
-      for (const name in presets) {
-        presetsFolder.add(presets, name);
-      } // Function to update display based on settings
+  const start = {};
+  keys.forEach((k) => (start[k] = ctr[k]));
+  const startTime = performance.now();
+  const ease = (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
 
-      function stopConfigTween() {
-        if (configTween && configTween.raf) cancelAnimationFrame(configTween.raf);
-        configTween = null;
+  const step = (now) => {
+    const t = Math.min(1, (now - startTime) / duration);
+    const e = ease(t);
+    keys.forEach((k) => {
+      const v = start[k] + (target[k] - start[k]) * e;
+      ctr[k] = k === "count" ? Math.round(v) : v;
+    });
+    updateDisplayStatus();
+    if (t < 1) {
+      configTween = { raf: requestAnimationFrame(step) };
+    } else {
+      configTween = null;
+    }
+  };
+
+  configTween = { raf: requestAnimationFrame(step) };
+}
+
+function updateDisplayStatus() {
+  // Update all controllers to reflect current values
+  const controllers = gui.controllersRecursive();
+  controllers.forEach((controller) => {
+    // Force UI to match the underlying values
+    controller.updateDisplay();
+
+    // For sliders, explicitly update the visual slider position
+    if (
+      controller.__li &&
+      controller.__li.classList.contains("has-slider")
+    ) {
+      updateSliderVisual(controller);
+    }
+  });
+
+  // Additional logic for post-processing toggle
+  if (ctr.is_pp !== lastPPState) {
+    console.log(ctr.is_pp ? "Post-processing enabled" : "Post-processing disabled");
+    lastPPState = ctr.is_pp;
+  }
+}
+
+// Function to reset the scene
+async function resetDisplayStatus() {
+  stopConfigTween();
+  // Reset visual parameters
+  ctr.count = 200035;
+  ctr.capsule = 0.1;
+  ctr.master_size = 0.1;
+  ctr.master_power = 0.1;
+  ctr.spin_scale = 0.1;
+  ctr.spin_speed = 0.1;
+  ctr.shaggy = 0.1;
+  ctr.master_metabolism = 0;
+  ctr.hue = 0.5;
+  ctr.timespeed = 0;
+
+  // Reload the GLB model to reset particle positions
+  try {
+    const loader = new GLTFLoader();
+    const gltf = await loader.loadAsync("./solCme_logo3.glb");
+
+    const geometries = [];
+    gltf.scene.updateMatrixWorld(true);
+
+    gltf.scene.traverse((child) => {
+      if (child.isMesh) {
+        const clonedGeo = child.geometry.clone();
+        clonedGeo.applyMatrix4(child.matrixWorld);
+        geometries.push(clonedGeo);
+      }
+    });
+
+    if (geometries.length) {
+      const mergedGeometry =
+        BufferGeometryUtils.mergeGeometries(geometries);
+      const mesh = new THREE.Mesh(mergedGeometry);
+      const sampler = new MeshSurfaceSampler(mesh).build();
+
+      const tempPos = new THREE.Vector3();
+      let p = 0;
+      for (let i = 0; i < MAXPARTICLENUM; i++) {
+        sampler.sample(tempPos);
+        f32_org[p] = tempPos.x * 2;
+        f32_org[p + 1] = tempPos.y * 2;
+        f32_org[p + 2] = tempPos.z * 2;
+        f32_org[p + 3] = tempPos.length() * 0.5;
+        p += 4;
       }
 
-      function smoothSetConfig(target, duration = 900) {
-        stopConfigTween();
-        const keys = Object.keys(target).filter(
-          (k) => typeof ctr[k] === "number" && typeof target[k] === "number"
-        );
-        if (!keys.length) return;
+      tex_org.needsUpdate = true;
 
-        const start = {};
-        keys.forEach((k) => (start[k] = ctr[k]));
-        const startTime = performance.now();
-        const ease = (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
+      // Reinitialize particle positions by resetting my_time to 0
+      // This triggers the init phase in the tic() function
+      my_time = 0;
 
-        const step = (now) => {
-          const t = Math.min(1, (now - startTime) / duration);
-          const e = ease(t);
-          keys.forEach((k) => {
-            const v = start[k] + (target[k] - start[k]) * e;
-            ctr[k] = k === "count" ? Math.round(v) : v;
-          });
-          updateDisplayStatus();
-          if (t < 1) {
-            configTween = { raf: requestAnimationFrame(step) };
-          } else {
-            configTween = null;
-          }
-        };
+      console.log("GLB shape reset successfully");
+    }
+  } catch (error) {
+    console.error("Error resetting GLB shape:", error);
+  }
 
-        configTween = { raf: requestAnimationFrame(step) };
-      }
+  // Update all GUI controllers
+  updateDisplayStatus();
+}
 
-      function updateDisplayStatus() {
-        // Update all controllers to reflect current values
-        const controllers = gui.controllersRecursive();
-        controllers.forEach((controller) => {
-          // Force UI to match the underlying values
-          controller.updateDisplay();
+// Helper function to properly update slider visuals
+function updateSliderVisual(controller) {
+  if (!controller || !controller.min || !controller.max) return;
 
-          // For sliders, explicitly update the visual slider position
-          if (
-            controller.__li &&
-            controller.__li.classList.contains("has-slider")
-          ) {
-            updateSliderVisual(controller);
-          }
-        });
+  const slider = controller.domElement.querySelector(".slider");
+  if (!slider) return;
 
-        // Additional logic for post-processing toggle
-        if (ctr.is_pp !== lastPPState) {
-          console.log(ctr.is_pp ? "Post-processing enabled" : "Post-processing disabled");
-          lastPPState = ctr.is_pp;
-        }
-      }
+  // Calculate percentage based on controller value
+  const percent =
+    (controller.getValue() - controller.min) /
+    (controller.max - controller.min);
 
-      // Function to reset the scene
-      async function resetDisplayStatus() {
-        stopConfigTween();
-        // Reset visual parameters
-        ctr.count = 200035;
-        ctr.capsule = 0.1;
-        ctr.master_size = 0.1;
-        ctr.master_power = 0.1;
-        ctr.spin_scale = 0.1;
-        ctr.spin_speed = 0.1;
-        ctr.shaggy = 0.1;
-        ctr.master_metabolism = 0;
-        ctr.hue = 0.5;
-        ctr.timespeed = 0;
+  // Create or update the slider foreground element to show the value correctly
+  let sliderFg = slider.querySelector(".slider-fg");
+  if (!sliderFg) {
+    sliderFg = document.createElement("div");
+    sliderFg.className = "slider-fg";
+    slider.appendChild(sliderFg);
+  }
 
-        // Reload the GLB model to reset particle positions
-        try {
-          const loader = new GLTFLoader();
-          const gltf = await loader.loadAsync("./solCme_logo3.glb");
+  // Set the width according to the value (handle RTL layout)
+  sliderFg.style.width = `${percent * 100}%`;
+}
+// Open specific folders by default
+mainFolder.open();
+particlesFolder.open();
+visualFolder.open();
 
-          const geometries = [];
-          gltf.scene.updateMatrixWorld(true);
+// Initialize all sliders to show proper positions on startup
+setTimeout(() => {
+  updateDisplayStatus();
+}, 100);
 
-          gltf.scene.traverse((child) => {
-            if (child.isMesh) {
-              const clonedGeo = child.geometry.clone();
-              clonedGeo.applyMatrix4(child.matrixWorld);
-              geometries.push(clonedGeo);
-            }
-          });
-
-          if (geometries.length) {
-            const mergedGeometry =
-              BufferGeometryUtils.mergeGeometries(geometries);
-            const mesh = new THREE.Mesh(mergedGeometry);
-            const sampler = new MeshSurfaceSampler(mesh).build();
-
-            const tempPos = new THREE.Vector3();
-            let p = 0;
-            for (let i = 0; i < MAXPARTICLENUM; i++) {
-              sampler.sample(tempPos);
-              f32_org[p] = tempPos.x * 2;
-              f32_org[p + 1] = tempPos.y * 2;
-              f32_org[p + 2] = tempPos.z * 2;
-              f32_org[p + 3] = tempPos.length() * 0.5;
-              p += 4;
-            }
-
-            tex_org.needsUpdate = true;
-
-            // Reinitialize particle positions by resetting my_time to 0
-            // This triggers the init phase in the tic() function
-            my_time = 0;
-
-            console.log("GLB shape reset successfully");
-          }
-        } catch (error) {
-          console.error("Error resetting GLB shape:", error);
-        }
-
-        // Update all GUI controllers
-        updateDisplayStatus();
-      }
-
-      // Helper function to properly update slider visuals
-      function updateSliderVisual(controller) {
-        if (!controller || !controller.min || !controller.max) return;
-
-        const slider = controller.domElement.querySelector(".slider");
-        if (!slider) return;
-
-        // Calculate percentage based on controller value
-        const percent =
-          (controller.getValue() - controller.min) /
-          (controller.max - controller.min);
-
-        // Create or update the slider foreground element to show the value correctly
-        let sliderFg = slider.querySelector(".slider-fg");
-        if (!sliderFg) {
-          sliderFg = document.createElement("div");
-          sliderFg.className = "slider-fg";
-          slider.appendChild(sliderFg);
-        }
-
-        // Set the width according to the value (handle RTL layout)
-        sliderFg.style.width = `${percent * 100}%`;
-      }
-      // Open specific folders by default
-      mainFolder.open();
-      particlesFolder.open();
-      visualFolder.open();
-
-      // Initialize all sliders to show proper positions on startup
-      setTimeout(() => {
-        updateDisplayStatus();
-      }, 100);
-
-      // Create keyboard shortcuts panel
-      const shortcutsPanel = document.createElement("div");
-      shortcutsPanel.className = "keyboard-shortcuts hidden";
-      shortcutsPanel.innerHTML = `
+// Create keyboard shortcuts panel
+const shortcutsPanel = document.createElement("div");
+shortcutsPanel.className = "keyboard-shortcuts hidden";
+shortcutsPanel.innerHTML = `
           <h3>קיצורי מקלדת</h3>
           <table>
               <tr>
@@ -521,1307 +521,1307 @@
               </tr>
           </table>
       `;
-      document.body.appendChild(shortcutsPanel);
+document.body.appendChild(shortcutsPanel);
 
-      // Create shortcuts toggle button
-      const toggleButton = document.createElement("button");
-      toggleButton.className = "toggle-shortcuts";
-      toggleButton.innerHTML = "?";
-      toggleButton.title = "הצג קיצורי מקלדת";
-      document.body.appendChild(toggleButton);
+// Create shortcuts toggle button
+const toggleButton = document.createElement("button");
+toggleButton.className = "toggle-shortcuts";
+toggleButton.innerHTML = "?";
+toggleButton.title = "הצג קיצורי מקלדת";
+document.body.appendChild(toggleButton);
 
-      // Toggle shortcuts panel visibility
-      toggleButton.addEventListener("click", () => {
-        shortcutsPanel.classList.toggle("hidden");
-      });
+// Toggle shortcuts panel visibility
+toggleButton.addEventListener("click", () => {
+  shortcutsPanel.classList.toggle("hidden");
+});
 
-      // Additional keyboard shortcuts
-      window.addEventListener("keydown", (e) => {
-        if (e.keyCode === 49) ctr.hue = 0.02; // Key 1
-        if (e.keyCode === 50) ctr.hue = 1; // Key 2
-        if (e.keyCode === 51) {
-          ctr.master_power = 1.9;
-          ctr.shaggy = 2;
-        } // Key 3
-        if (e.keyCode === 52) {
-          ctr.master_power = 1;
-          ctr.shaggy = 1;
-        } // Key 4
-        if (e.keyCode === 80) {
-          // Key P
-          ctr.is_pp = !ctr.is_pp;
-          updateDisplayStatus();
-        }
-        if (e.keyCode === 82) {
-          // Key R
-          cam.position.set(-1, 0.5, 2.5);
-          my_orbit_controls.target.set(0, 0, 0);
-          my_orbit_controls.update();
-        }
-      });
+// Additional keyboard shortcuts
+window.addEventListener("keydown", (e) => {
+  if (e.keyCode === 49) ctr.hue = 0.02; // Key 1
+  if (e.keyCode === 50) ctr.hue = 1; // Key 2
+  if (e.keyCode === 51) {
+    ctr.master_power = 1.9;
+    ctr.shaggy = 2;
+  } // Key 3
+  if (e.keyCode === 52) {
+    ctr.master_power = 1;
+    ctr.shaggy = 1;
+  } // Key 4
+  if (e.keyCode === 80) {
+    // Key P
+    ctr.is_pp = !ctr.is_pp;
+    updateDisplayStatus();
+  }
+  if (e.keyCode === 82) {
+    // Key R
+    cam.position.set(-1, 0.5, 2.5);
+    my_orbit_controls.target.set(0, 0, 0);
+    my_orbit_controls.update();
+  }
+});
 
-      // =============================================================================== //
-      const my_orbit_controls = (o = new OrbitControls(cam, can));
-      o.minDistance = 0.5;
-      o.maxDistance = 5;
-      o.minPolarAngle = 0.1;
-      o.maxPolarAngle = 5;
-      o.enableDamping = true;
-      o.dampingFactor = 0.1;
+// =============================================================================== //
+const my_orbit_controls = (o = new OrbitControls(cam, can));
+o.minDistance = 0.5;
+o.maxDistance = 5;
+o.minPolarAngle = 0.1;
+o.maxPolarAngle = 5;
+o.enableDamping = true;
+o.dampingFactor = 0.1;
 
-      // =============================================================================== //
-      const tex_blue = new THREE.TextureLoader().load("");
-      tex_blue.wrapS = tex_blue.wrapT = THREE.RepeatWrapping;
-      tex_blue.minFilter = tex_blue.magFilter = THREE.NearestFilter;
+// =============================================================================== //
+const tex_blue = new THREE.TextureLoader().load("");
+tex_blue.wrapS = tex_blue.wrapT = THREE.RepeatWrapping;
+tex_blue.minFilter = tex_blue.magFilter = THREE.NearestFilter;
 
-      // =============================================================================== //
-      const cam_o = new THREE.OrthographicCamera(-0.5, 0.5, 0.5, -0.5, 0, 1);
-      const plane_o = new THREE.Mesh(new THREE.PlaneGeometry(1, 1));
-      const scene_o = new THREE.Scene();
-      scene_o.add(plane_o);
+// =============================================================================== //
+const cam_o = new THREE.OrthographicCamera(-0.5, 0.5, 0.5, -0.5, 0, 1);
+const plane_o = new THREE.Mesh(new THREE.PlaneGeometry(1, 1));
+const scene_o = new THREE.Scene();
+scene_o.add(plane_o);
 
-      // =============================================================================== //
-      const rt_scene = new THREE.RenderTarget(1, 1, {
-        colorSpace: THREE.SRGBColorSpace,
-      });
+// =============================================================================== //
+const rt_scene = new THREE.RenderTarget(1, 1, {
+  colorSpace: THREE.SRGBColorSpace,
+});
 
-      // =============================================================================== //
-      const mat_only_particles = (o = new THREE.NodeMaterial());
+// =============================================================================== //
+const mat_only_particles = (o = new THREE.NodeMaterial());
 
-      o.fragmentNode = Fn(() => {
-        const d = texture(rt_scene.texture, vec2(uv().x, uv().y.oneMinus()));
-        return vec4(d.rgb.mul(step(d.a, 0.999)), d.a.oneMinus());
-      })();
+o.fragmentNode = Fn(() => {
+  const d = texture(rt_scene.texture, vec2(uv().x, uv().y.oneMinus()));
+  return vec4(d.rgb.mul(step(d.a, 0.999)), d.a.oneMinus());
+})();
 
-      const rt_only_particles = new THREE.RenderTarget(1, 1, {
-        minFilter: THREE.NearestFilter,
-        magFilter: THREE.NearestFilter,
-      });
+const rt_only_particles = new THREE.RenderTarget(1, 1, {
+  minFilter: THREE.NearestFilter,
+  magFilter: THREE.NearestFilter,
+});
 
-      // =============================================================================== //
-      function mat_blur_proc(t) {
-        const w = vec2(uv().x, uv().y.oneMinus());
-        return texture(t, w)
-          .add(texture(t, w.add(vec2(uni_blur_v.x, 0))))
-          .add(texture(t, w.sub(vec2(uni_blur_v.x, 0))))
-          .add(texture(t, w.add(vec2(0, uni_blur_v.y))))
-          .add(texture(t, w.sub(vec2(0, uni_blur_v.y))))
-          .mul(0.2);
+// =============================================================================== //
+function mat_blur_proc(t) {
+  const w = vec2(uv().x, uv().y.oneMinus());
+  return texture(t, w)
+    .add(texture(t, w.add(vec2(uni_blur_v.x, 0))))
+    .add(texture(t, w.sub(vec2(uni_blur_v.x, 0))))
+    .add(texture(t, w.add(vec2(0, uni_blur_v.y))))
+    .add(texture(t, w.sub(vec2(0, uni_blur_v.y))))
+    .mul(0.2);
+}
+
+const rt_blur = new Array(5);
+const mat_blur = new Array(5);
+for (i = 0; i < 5; i++) {
+  rt_blur[i] = new THREE.RenderTarget(1, 1, {});
+  mat_blur[i] = o = new THREE.NodeMaterial();
+  let t = i < 1 ? rt_only_particles.texture : rt_blur[i - 1].texture;
+  o.fragmentNode = Fn(() => mat_blur_proc(t))();
+}
+
+// =============================================================================== //
+const mat_bloom = (o = new THREE.NodeMaterial());
+
+o.fragmentNode = Fn(() => {
+  const w = vec2().toVar();
+  const d = vec4().toVar();
+
+  w.assign(vec2(uv().x, uv().y.oneMinus()));
+  d.assign(
+    texture(rt_blur[0].texture, w)
+      .add(texture(rt_blur[1].texture, w).mul(0.5))
+      .add(texture(rt_blur[2].texture, w).mul(1))
+      .add(texture(rt_blur[3].texture, w).mul(1.5))
+      .add(texture(rt_blur[4].texture, w).mul(2))
+  );
+  d.rgb.mulAssign(d.a);
+  return texture(rt_scene.texture, w)
+    .oneMinus()
+    .mul(d.oneMinus())
+    .oneMinus();
+})();
+
+const rt_bloom = new THREE.RenderTarget(1, 1, {});
+
+// =============================================================================== //
+const mat_show = (o = new THREE.NodeMaterial());
+
+o.fragmentNode = Fn(() => {
+  const v = vec2().toVar();
+  const w = vec2().toVar();
+
+  const c = vec3().toVar();
+
+  w.assign(vec2(uv().x, uv().y.oneMinus()));
+
+  //★ הזזת RGB
+  v.assign(float(10).div(uni_wh.y).mul(w.sub(0.5)));
+  c.assign(
+    vec3(
+      texture(rt_bloom.texture, w.sub(v)).r,
+      texture(rt_bloom.texture, w).g,
+      texture(rt_bloom.texture, w.add(v)).b
+    )
+  );
+
+  c.addAssign(c.sub(c.r.add(c.g).add(c.b).mul(0.3)).mul(1.5)); //★ הגברת רוויה ובהירות
+  c.mulAssign(float(11).div(c.add(8))); //★ דיכוי הילה עם פונקציית סיגמואיד
+  c.addAssign(
+    texture(tex_blue, screenCoordinate.xy.mul(1 / 128)).r.mul(0.05)
+  ); //★ הסרת שלבי גרדיאנט עם דיטרינג
+  w.subAssign(0.5);
+  c.subAssign(dot(w, w).mul(0.3)); //★ וינייט
+
+  return vec4(c, 1);
+})();
+
+// =============================================================================== //
+const shadow_w = 1024;
+const rt_shadow = new THREE.RenderTarget(shadow_w, shadow_w, {
+  format: THREE.RFormat,
+  type: THREE.FloatType,
+});
+a = 0;
+const cam_s = new THREE.OrthographicCamera(-a, a, a, -a, 0.1, 20);
+
+// =============================================================================== //
+const f32_org = new Float32Array(MAXPARTICLENUM * 4);
+let tex_org = new THREE.DataTexture(
+  f32_org,
+  WC,
+  WC,
+  THREE.RGBAFormat,
+  THREE.FloatType
+);
+tex_org.needsUpdate = true;
+
+// Color texture for original model colors
+const f32_color = new Float32Array(MAXPARTICLENUM * 4);
+let tex_color = new THREE.DataTexture(
+  f32_color,
+  WC,
+  WC,
+  THREE.RGBAFormat,
+  THREE.FloatType
+);
+tex_color.needsUpdate = true;
+
+function getTextureDataFromMaterial(mat) {
+  if (!mat) return null;
+  const mapCandidate = Array.isArray(mat)
+    ? mat.find((m) => m && m.map)?.map
+    : mat.map;
+
+  if (!mapCandidate) return null;
+  const texImage = mapCandidate.image || mapCandidate.source?.data;
+  if (!texImage) return null;
+
+  const img = texImage.image || texImage;
+  const width = img.width;
+  const height = img.height;
+  if (!width || !height) return null;
+
+  if (img.data && img.width && img.height) {
+    return {
+      data: img.data,
+      width,
+      height,
+      isFloat:
+        img.data instanceof Float32Array ||
+        img.data instanceof Float64Array,
+    };
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  ctx.drawImage(img, 0, 0);
+  return {
+    data: ctx.getImageData(0, 0, width, height).data,
+    width,
+    height,
+    isFloat: false,
+  };
+}
+
+const _tempA = new THREE.Vector3();
+const _tempB = new THREE.Vector3();
+const _tempC = new THREE.Vector3();
+
+function computeFaceAreas(posAttr, indexAttr, start = 0, countOverride) {
+  const indexCount =
+    countOverride ??
+    (indexAttr ? indexAttr.count : posAttr.count);
+  const faceCount = indexCount / 3;
+  const faceAreas = new Float32Array(faceCount);
+  const faceCumulativeAreas = new Float32Array(faceCount);
+  let totalArea = 0;
+
+  for (let i = 0; i < faceCount; i++) {
+    let iA, iB, iC;
+    if (indexAttr) {
+      const base = start + i * 3;
+      iA = indexAttr.getX(base);
+      iB = indexAttr.getX(base + 1);
+      iC = indexAttr.getX(base + 2);
+    } else {
+      const base = start + i * 3;
+      iA = base;
+      iB = base + 1;
+      iC = base + 2;
+    }
+
+    _tempA.fromBufferAttribute(posAttr, iA);
+    _tempB.fromBufferAttribute(posAttr, iB);
+    _tempC.fromBufferAttribute(posAttr, iC);
+
+    _tempB.sub(_tempA);
+    _tempC.sub(_tempA);
+    _tempB.cross(_tempC);
+
+    const area = _tempB.length() * 0.5;
+    totalArea += area;
+    faceAreas[i] = area;
+    faceCumulativeAreas[i] = totalArea;
+  }
+
+  return { faceAreas, faceCumulativeAreas, totalArea };
+}
+
+function buildMeshSamplingData(scene) {
+  const meshes = [];
+
+  scene.traverse((child) => {
+    if (!child.isMesh || !child.geometry) return;
+
+    const clonedGeo = child.geometry.clone();
+    clonedGeo.applyMatrix4(child.matrixWorld);
+
+    const posAttr = clonedGeo.attributes.position;
+    if (!posAttr) return;
+
+    const uvAttr = clonedGeo.attributes.uv;
+    const colorAttr = clonedGeo.attributes.color;
+    const indexAttr = clonedGeo.index;
+    const { faceAreas, faceCumulativeAreas, totalArea } = computeFaceAreas(
+      posAttr,
+      indexAttr
+    );
+    if (totalArea <= 0) return;
+    const textureData = getTextureDataFromMaterial(child.material);
+    const materialColor = Array.isArray(child.material)
+      ? child.material.find((m) => m && m.color)?.color
+      : child.material?.color;
+
+    meshes.push({
+      posAttr,
+      uvAttr,
+      colorAttr,
+      indexAttr,
+      textureData,
+      materialColor,
+      faceAreas,
+      faceCumulativeAreas,
+      totalArea,
+    });
+  });
+
+  return meshes;
+}
+
+function pickFaceIndex(faceCumulativeAreas, r) {
+  let low = 0;
+  let high = faceCumulativeAreas.length - 1;
+  let faceIndex = 0;
+
+  while (low <= high) {
+    const mid = (low + high) >>> 1;
+    if (r < faceCumulativeAreas[mid]) {
+      faceIndex = mid;
+      high = mid - 1;
+    } else {
+      low = mid + 1;
+    }
+  }
+
+  return faceIndex;
+}
+
+async function fillParticlesFromGltf(gltf, options = {}) {
+  const meshes = buildMeshSamplingData(gltf.scene);
+  if (!meshes.length) throw new Error("No mesh in GLB");
+
+  let sceneTotalArea = 0;
+  const meshCumulative = new Float32Array(meshes.length);
+  meshes.forEach((mesh, idx) => {
+    sceneTotalArea += mesh.totalArea;
+    meshCumulative[idx] = sceneTotalArea;
+  });
+
+  p = 0;
+  for (let i = 0; i < MAXPARTICLENUM; i++) {
+    const rMesh = Math.random() * sceneTotalArea;
+    let meshIndex = 0;
+    for (let m = 0; m < meshCumulative.length; m++) {
+      if (rMesh <= meshCumulative[m]) {
+        meshIndex = m;
+        break;
       }
+    }
 
-      const rt_blur = new Array(5);
-      const mat_blur = new Array(5);
-      for (i = 0; i < 5; i++) {
-        rt_blur[i] = new THREE.RenderTarget(1, 1, {});
-        mat_blur[i] = o = new THREE.NodeMaterial();
-        let t = i < 1 ? rt_only_particles.texture : rt_blur[i - 1].texture;
-        o.fragmentNode = Fn(() => mat_blur_proc(t))();
-      }
+    const {
+      posAttr,
+      uvAttr,
+      colorAttr,
+      indexAttr,
+      textureData,
+      materialColor,
+      faceCumulativeAreas,
+      totalArea,
+    } = meshes[meshIndex];
 
-      // =============================================================================== //
-      const mat_bloom = (o = new THREE.NodeMaterial());
+    const faceR = Math.random() * totalArea;
+    const faceIndex = pickFaceIndex(faceCumulativeAreas, faceR);
 
-      o.fragmentNode = Fn(() => {
-        const w = vec2().toVar();
-        const d = vec4().toVar();
+    let iA, iB, iC;
+    if (indexAttr) {
+      iA = indexAttr.getX(faceIndex * 3);
+      iB = indexAttr.getX(faceIndex * 3 + 1);
+      iC = indexAttr.getX(faceIndex * 3 + 2);
+    } else {
+      iA = faceIndex * 3;
+      iB = faceIndex * 3 + 1;
+      iC = faceIndex * 3 + 2;
+    }
 
-        w.assign(vec2(uv().x, uv().y.oneMinus()));
-        d.assign(
-          texture(rt_blur[0].texture, w)
-            .add(texture(rt_blur[1].texture, w).mul(0.5))
-            .add(texture(rt_blur[2].texture, w).mul(1))
-            .add(texture(rt_blur[3].texture, w).mul(1.5))
-            .add(texture(rt_blur[4].texture, w).mul(2))
-        );
-        d.rgb.mulAssign(d.a);
-        return texture(rt_scene.texture, w)
-          .oneMinus()
-          .mul(d.oneMinus())
-          .oneMinus();
-      })();
+    _tempA.fromBufferAttribute(posAttr, iA);
+    _tempB.fromBufferAttribute(posAttr, iB);
+    _tempC.fromBufferAttribute(posAttr, iC);
 
-      const rt_bloom = new THREE.RenderTarget(1, 1, {});
+    let r1 = Math.random();
+    let r2 = Math.random();
+    if (r1 + r2 > 1) {
+      r1 = 1 - r1;
+      r2 = 1 - r2;
+    }
+    const r3 = 1 - r1 - r2;
 
-      // =============================================================================== //
-      const mat_show = (o = new THREE.NodeMaterial());
+    const x = _tempA.x * r1 + _tempB.x * r2 + _tempC.x * r3;
+    const y = _tempA.y * r1 + _tempB.y * r2 + _tempC.y * r3;
+    const z = _tempA.z * r1 + _tempB.z * r2 + _tempC.z * r3;
 
-      o.fragmentNode = Fn(() => {
-        const v = vec2().toVar();
-        const w = vec2().toVar();
+    f32_org[p] = x * 2;
+    f32_org[p + 1] = y * 2;
+    f32_org[p + 2] = z * 2;
+    f32_org[p + 3] = Math.sqrt(x * x + y * y + z * z) * 0.5;
 
-        const c = vec3().toVar();
+    let colorSet = false;
+    if (
+      textureData &&
+      textureData.data &&
+      textureData.width &&
+      textureData.height &&
+      uvAttr
+    ) {
+      const texWidth = textureData.width;
+      const texHeight = textureData.height;
+      const texDivisor = textureData.isFloat ? 1 : 255;
+      const uvA_x = uvAttr.getX(iA);
+      const uvA_y = uvAttr.getY(iA);
+      const uvB_x = uvAttr.getX(iB);
+      const uvB_y = uvAttr.getY(iB);
+      const uvC_x = uvAttr.getX(iC);
+      const uvC_y = uvAttr.getY(iC);
 
-        w.assign(vec2(uv().x, uv().y.oneMinus()));
+      let u = uvA_x * r1 + uvB_x * r2 + uvC_x * r3;
+      let v = uvA_y * r1 + uvB_y * r2 + uvC_y * r3;
+      u = ((u % 1) + 1) % 1;
+      v = ((v % 1) + 1) % 1;
 
-        //★ הזזת RGB
-        v.assign(float(10).div(uni_wh.y).mul(w.sub(0.5)));
-        c.assign(
-          vec3(
-            texture(rt_bloom.texture, w.sub(v)).r,
-            texture(rt_bloom.texture, w).g,
-            texture(rt_bloom.texture, w.add(v)).b
+      const px = Math.floor(u * (texWidth - 1));
+      const py = Math.floor(v * (texHeight - 1));
+      const idx = (py * texWidth + px) * 4;
+
+      f32_color[p] = textureData.data[idx] / texDivisor;
+      f32_color[p + 1] = textureData.data[idx + 1] / texDivisor;
+      f32_color[p + 2] = textureData.data[idx + 2] / texDivisor;
+      f32_color[p + 3] = 1.0;
+      colorSet = true;
+    }
+
+    if (!colorSet && colorAttr && colorAttr.itemSize >= 3) {
+      const colR =
+        colorAttr.getX(iA) * r1 +
+        colorAttr.getX(iB) * r2 +
+        colorAttr.getX(iC) * r3;
+      const colG =
+        colorAttr.getY(iA) * r1 +
+        colorAttr.getY(iB) * r2 +
+        colorAttr.getY(iC) * r3;
+      const colB =
+        colorAttr.getZ(iA) * r1 +
+        colorAttr.getZ(iB) * r2 +
+        colorAttr.getZ(iC) * r3;
+
+      f32_color[p] = colR;
+      f32_color[p + 1] = colG;
+      f32_color[p + 2] = colB;
+      f32_color[p + 3] = 1.0;
+      colorSet = true;
+    }
+
+    if (!colorSet && materialColor) {
+      f32_color[p] = materialColor.r;
+      f32_color[p + 1] = materialColor.g;
+      f32_color[p + 2] = materialColor.b;
+      f32_color[p + 3] = 1.0;
+      colorSet = true;
+    }
+
+    if (!colorSet && options.fallbackPalette) {
+      const colorIndex = y > 0 ? 0 : 1;
+      const palette =
+        options.fallbackPalette[colorIndex] ||
+        options.fallbackPalette[0];
+      f32_color[p] = palette[0];
+      f32_color[p + 1] = palette[1];
+      f32_color[p + 2] = palette[2];
+      f32_color[p + 3] = 1.0;
+      colorSet = true;
+    }
+
+    if (!colorSet) {
+      const c = options.defaultColor || [1, 1, 1];
+      f32_color[p] = c[0];
+      f32_color[p + 1] = c[1];
+      f32_color[p + 2] = c[2];
+      f32_color[p + 3] = 1.0;
+    }
+
+    p += 4;
+  }
+
+  tex_org.needsUpdate = true;
+  tex_color.needsUpdate = true;
+}
+
+// Load GLB model and sample particles
+async function loadGLBModel() {
+  try {
+    const loader = new GLTFLoader();
+    const gltf = await loader.loadAsync("./solCme_logo.glb");
+
+    gltf.scene.updateMatrixWorld(true);
+
+    await fillParticlesFromGltf(gltf, { defaultColor: [1, 1, 1] });
+    console.log("GLB model loaded and particles sampled with texture colors");
+
+    // Start animation after model is loaded
+    ren.setAnimationLoop(tic);
+  } catch (error) {
+    console.error("Error loading GLB model:", error);
+    // Fallback to torus if loading fails
+    p = 0;
+    for (i = 0; i < MAXPARTICLENUM; i++) {
+      let r = 0.25;
+      a = 6.28318 * Math.random();
+      f32_org[p + 2] = r * Math.cos(a);
+      r = 1 + r * Math.sin(a);
+      a = 2.4 * i;
+      f32_org[p] = r * Math.cos(a);
+      f32_org[p + 1] = r * Math.sin(a);
+      p += 4;
+    }
+    tex_org.needsUpdate = true;
+    ren.setAnimationLoop(tic);
+  }
+}
+
+// =============================================================================== //
+function mm_hash12(iw) {
+  const w = iw.mul(0.000303).add(fract(iw.mul(0.707)));
+  const a = w.x.add(w.y.mul(0.3));
+
+  a.assign(fract(a));
+  a.assign(a.sub(a.mul(a)));
+
+  return fract(a.mul(937652.481));
+}
+
+function rnd_dir(ip) {
+  return fract(
+    vec3(1, 99, 9999).mul(mm_hash12(ip.xy.add(ip.zz.mul(100))))
+  ).sub(0.5);
+}
+
+function simplex3d(p) {
+  const ip = floor(p.add(dot(vec3(0.333333), p)));
+  const p0 = p.sub(ip).add(dot(vec3(0.166666), ip));
+
+  const f = step(p0.yzx, p0);
+  const ff = f.mul(f.zxy);
+  const v1 = f.sub(ff);
+  const v2 = ff.sub(f.zxy).add(1);
+
+  const p1 = p0.sub(v1).add(0.166666);
+  const p2 = p0.sub(v2).add(0.333333);
+  const p3 = p0.sub(1).add(0.5);
+
+  const d = vec4(dot(p0, p0), dot(p1, p1), dot(p2, p2), dot(p3, p3))
+    .negate()
+    .add(0.58)
+    .max(0);
+  d.assign(d.mul(d));
+  d.assign(d.mul(d));
+
+  return dot(
+    vec4(
+      dot(p0, rnd_dir(ip)),
+      dot(p1, rnd_dir(ip.add(v1))),
+      dot(p2, rnd_dir(ip.add(v2))),
+      dot(p3, rnd_dir(ip.add(1)))
+    ),
+    d
+  )
+    .mul(40)
+    .add(0.5);
+}
+
+function fs_velo(n) {
+  const e = vec2(0.01, 0);
+  const m = float().toVar();
+
+  const p = vec3().toVar();
+  const v = vec3().toVar();
+
+  m.assign(0.3);
+  p.assign(
+    texture(rt_pos[n].texture, vec2(uv().x, uv().y.oneMinus()))
+      .xyz.mul(uni_spin_scale)
+      .add(vec3(0, 0, uni_spin_time))
+  );
+
+  v.addAssign(
+    vec3(
+      simplex3d(p.add(e.xyy)),
+      simplex3d(p.add(e.yxy)),
+      simplex3d(p.add(e.yyx))
+    )
+      .sub(simplex3d(p))
+      .mul(m)
+  );
+
+  m.mulAssign(uni_shaggy);
+  p.mulAssign(2);
+  v.addAssign(
+    vec3(
+      simplex3d(p.add(e.xyy)),
+      simplex3d(p.add(e.yxy)),
+      simplex3d(p.add(e.yyx))
+    )
+      .sub(simplex3d(p))
+      .mul(m)
+  );
+
+  return vec4(v.y.negate(), v.x, v.x.mul(v.y).sub(v.z), 0);
+}
+
+const mat_velo_with_0 = (o = new THREE.NodeMaterial());
+o.fragmentNode = Fn(() => fs_velo(0))();
+
+const mat_velo_with_1 = (o = o.clone());
+o.fragmentNode = Fn(() => fs_velo(1))();
+
+const rt_velo = new THREE.RenderTarget(WC, WC, {
+  type: THREE.FloatType,
+  minFilter: THREE.NearestFilter,
+  magFilter: THREE.NearestFilter,
+});
+
+// =============================================================================== //
+const mat_init_phase = (o = new THREE.NodeMaterial());
+
+o.fragmentNode = Fn(() => {
+  return vec4(
+    texture(tex_org, vec2(uv().x, uv().y.oneMinus())).xyz,
+    uv().x.add(uv().y).mul(1234.56789).fract()
+  );
+})();
+
+// =============================================================================== //
+const v_power = varying(0);
+const v_metabolism = varying(0);
+
+function fs_pos(n) {
+  const w = vec2().toVar();
+
+  const d = vec4().toVar();
+
+  w.assign(vec2(uv().x, uv().y.oneMinus()));
+  d.assign(texture(rt_pos[n].texture, w));
+  d.xyz.addAssign(texture(rt_velo.texture, w).xyz.mul(v_power));
+  d.w.subAssign(v_metabolism);
+  If(d.w.lessThan(0), () => {
+    d.xyz.assign(texture(tex_org, w).xyz);
+    d.w.addAssign(1);
+  });
+  return d;
+}
+
+const mat_pos_with_0 = (o = new THREE.NodeMaterial());
+
+o.vertexNode = Fn(() => {
+  v_power.assign(
+    uv()
+      .x.add(uv().y)
+      .mul(387.654321)
+      .fract()
+      .add(1)
+      .mul(uni_master_power)
+  );
+  v_metabolism.assign(
+    uv()
+      .x.add(uv().y)
+      .mul(1234.56789)
+      .fract()
+      .mul(0.5)
+      .add(0.5)
+      .mul(uni_master_metabolism)
+  );
+  return cameraProjectionMatrix.mul(vec4(positionView, 1));
+})();
+o.fragmentNode = Fn(() => fs_pos(0))();
+
+const mat_pos_with_1 = (o = o.clone());
+o.fragmentNode = Fn(() => fs_pos(1))();
+
+const rt_pos = new Array(2);
+rt_pos[0] = new THREE.RenderTarget(WC, WC, {
+  type: THREE.FloatType,
+  minFilter: THREE.NearestFilter,
+  magFilter: THREE.NearestFilter,
+});
+rt_pos[1] = rt_pos[0].clone();
+let rt_pos_n = 0;
+
+// =============================================================================== //
+o = new THREE.PlaneGeometry(1, 1);
+const ibg = new THREE.InstancedBufferGeometry();
+ibg.index = o.index;
+ibg.setAttribute("position", o.getAttribute("position"));
+ibg.maxInstancedCount = MAXPARTICLENUM;
+
+const f32_individuality = new Float32Array(MAXPARTICLENUM * 2);
+p = 0;
+for (i = 0; i < MAXPARTICLENUM; i++) {
+  //f32_individuality[ i] = i < 0.005 * MAXPARTICLENUM //★ הפרטים הראשונים 0.5% בהירים יותר
+  f32_individuality[p++] =
+    Math.random() < 0.005 //★ 0.5% מהפרטים אקראיים בהירים יותר
+      ? 0.5 + 0.5 * Math.random()
+      : 0.04 + 0.02 * Math.random();
+  f32_individuality[p++] = 0.1 + 1.4 * Math.random(); //★ גודל
+}
+ibg.setAttribute(
+  "att_individuality",
+  new THREE.InstancedBufferAttribute(f32_individuality, 2)
+);
+
+const f32_storeuv = new Float32Array(WC * WC * 2);
+p = 0;
+for (let y = 0.5; y < WC; y++) {
+  for (let x = 0.5; x < WC; x++) {
+    f32_storeuv[p++] = x / WC;
+    f32_storeuv[p++] = y / WC;
+  }
+}
+ibg.setAttribute(
+  "att_storeuv",
+  new THREE.InstancedBufferAttribute(f32_storeuv, 2)
+);
+
+const capsules = new THREE.Mesh(ibg, null, MAXPARTICLENUM);
+capsules.frustumCulled = false;
+scene.add(capsules);
+
+// =============================================================================== //
+const v_size = varying(0);
+const v_intensity = varying(0);
+const v_uv = varying(vec2());
+const v_p = varying(vec3());
+const v_n = varying(vec3());
+const v_depth = varying(0);
+const v_capend_view = varying(vec3());
+const v_col = varying(vec3());
+
+function vs_particle(n) {
+  const att_individuality = attribute("att_individuality");
+  const att_storeuv = attribute("att_storeuv");
+
+  const a = float().toVar();
+  const b = float().toVar();
+  const d = vec4().toVar();
+
+  d.assign(texture(rt_pos[n].texture, att_storeuv));
+
+  If(uni_use_original_colors.greaterThan(0.5), () => {
+    // Use original colors from texture
+    v_col.assign(texture(tex_color, att_storeuv).rgb);
+  })
+    .ElseIf(uni_hue.greaterThan(0), () => {
+      a.assign(
+        simplex3d(
+          d.xyz.mul(0.3).add(vec3(0, 0, uni_time.mul(0.18)))
+        ).fract()
+      );
+      b.assign(0.05);
+      v_col.assign(
+        smoothstep(b.negate(), b, a.sub(0.2))
+          .mul(smoothstep(b.negate(), b, float(0.8).sub(a)))
+          .mul(0.8)
+          .add(0.2)
+          .mul(
+            vec3(
+              smoothstep(b.negate(), b, a.sub(0.0))
+                .mul(smoothstep(b.negate(), b, float(0.575).sub(a)))
+                .mul(0.5)
+                .add(0.5),
+              smoothstep(b.negate(), b, a.sub(0.3))
+                .mul(smoothstep(b.negate(), b, float(0.75).sub(a)))
+                .mul(0.7)
+                .add(0.3),
+              smoothstep(b.negate(), b, a.sub(0.425))
+                .mul(smoothstep(b.negate(), b, float(1).sub(a)))
+                .mul(0.5)
+                .add(0.5)
+            )
           )
-        );
-
-        c.addAssign(c.sub(c.r.add(c.g).add(c.b).mul(0.3)).mul(1.5)); //★ הגברת רוויה ובהירות
-        c.mulAssign(float(11).div(c.add(8))); //★ דיכוי הילה עם פונקציית סיגמואיד
-        c.addAssign(
-          texture(tex_blue, screenCoordinate.xy.mul(1 / 128)).r.mul(0.05)
-        ); //★ הסרת שלבי גרדיאנט עם דיטרינג
-        w.subAssign(0.5);
-        c.subAssign(dot(w, w).mul(0.3)); //★ וינייט
-
-        return vec4(c, 1);
-      })();
-
-      // =============================================================================== //
-      const shadow_w = 1024;
-      const rt_shadow = new THREE.RenderTarget(shadow_w, shadow_w, {
-        format: THREE.RFormat,
-        type: THREE.FloatType,
-      });
-      a = 0;
-      const cam_s = new THREE.OrthographicCamera(-a, a, a, -a, 0.1, 20);
-
-      // =============================================================================== //
-      const f32_org = new Float32Array(MAXPARTICLENUM * 4);
-      let tex_org = new THREE.DataTexture(
-        f32_org,
-        WC,
-        WC,
-        THREE.RGBAFormat,
-        THREE.FloatType
       );
-      tex_org.needsUpdate = true;
+    })
+    .Else(() => {
+      v_col.assign(vec3(0.5));
+    });
 
-      // Color texture for original model colors
-      const f32_color = new Float32Array(MAXPARTICLENUM * 4);
-      let tex_color = new THREE.DataTexture(
-        f32_color,
-        WC,
-        WC,
-        THREE.RGBAFormat,
-        THREE.FloatType
-      );
-      tex_color.needsUpdate = true;
+  v_intensity.assign(att_individuality.x);
 
-      function getTextureDataFromMaterial(mat) {
-        if (!mat) return null;
-        const mapCandidate = Array.isArray(mat)
-          ? mat.find((m) => m && m.map)?.map
-          : mat.map;
+  a.assign(smoothstep(0, 0.25, d.w.oneMinus().mul(d.w)));
+  v_size.assign(att_individuality.y.mul(uni_master_size).mul(a));
+  v_uv.assign(positionGeometry.xy.mul(2));
+  v_p.assign(modelWorldMatrix.mul(vec4(d.xyz, 1)).xyz);
+  d.assign(
+    cameraProjectionMatrix.mul(
+      cameraViewMatrix
+        .mul(vec4(v_p, 1))
+        .add(vec4(positionGeometry.mul(v_size), 0))
+    )
+  );
+  v_depth.assign(d.z);
+  v_capend_view.assign(
+    modelViewMatrix
+      .mul(texture(rt_velo.texture, att_storeuv))
+      .xyz.normalize()
+      .mul(uni_cap_r.oneMinus())
+  );
+  return d;
+}
 
-        if (!mapCandidate) return null;
-        const texImage = mapCandidate.image || mapCandidate.source?.data;
-        if (!texImage) return null;
+const mat_particle_with_0 = (o = new THREE.NodeMaterial());
 
-        const img = texImage.image || texImage;
-        const width = img.width;
-        const height = img.height;
-        if (!width || !height) return null;
+o.vertexNode = Fn(() => vs_particle(0))();
 
-        if (img.data && img.width && img.height) {
-          return {
-            data: img.data,
-            width,
-            height,
-            isFloat:
-              img.data instanceof Float32Array ||
-              img.data instanceof Float64Array,
-          };
-        }
+o.fragmentNode = Fn(() => {
+  const a = float().toVar();
+  const z = float().toVar();
+  const blue = float().toVar();
+  const lambert = float().toVar();
+  const specular = float().toVar();
 
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return null;
-        ctx.drawImage(img, 0, 0);
-        return {
-          data: ctx.getImageData(0, 0, width, height).data,
-          width,
-          height,
-          isFloat: false,
-        };
-      }
+  const q = vec2().toVar();
+  const qa = vec2().toVar();
+  const ba = vec2().toVar();
+  const s = vec2(7 / shadow_w);
 
-      const _tempA = new THREE.Vector3();
-      const _tempB = new THREE.Vector3();
-      const _tempC = new THREE.Vector3();
+  const c = vec3().toVar();
+  const n = vec3().toVar();
+  const p = vec3().toVar();
+  const v = vec3().toVar();
 
-      function computeFaceAreas(posAttr, indexAttr, start = 0, countOverride) {
-        const indexCount =
-          countOverride ??
-          (indexAttr ? indexAttr.count : posAttr.count);
-        const faceCount = indexCount / 3;
-        const faceAreas = new Float32Array(faceCount);
-        const faceCumulativeAreas = new Float32Array(faceCount);
-        let totalArea = 0;
+  const d = vec4().toVar();
 
-        for (let i = 0; i < faceCount; i++) {
-          let iA, iB, iC;
-          if (indexAttr) {
-            const base = start + i * 3;
-            iA = indexAttr.getX(base);
-            iB = indexAttr.getX(base + 1);
-            iC = indexAttr.getX(base + 2);
-          } else {
-            const base = start + i * 3;
-            iA = base;
-            iB = base + 1;
-            iC = base + 2;
-          }
+  q.assign(v_uv);
+  If(dot(q, q).greaterThan(1), () => Discard()); //★ שקיפות מחוץ לעיגול
 
-          _tempA.fromBufferAttribute(posAttr, iA);
-          _tempB.fromBufferAttribute(posAttr, iB);
-          _tempC.fromBufferAttribute(posAttr, iC);
+  blue.assign(texture(tex_blue, screenCoordinate.xy.mul(1 / 128)).r);
+  If(blue.greaterThan(v_depth.mul(3)), () => Discard()); //★ דיטרינג שקיפות כשקרוב למצלמה
 
-          _tempB.sub(_tempA);
-          _tempC.sub(_tempA);
-          _tempB.cross(_tempC);
+  qa.assign(q.add(v_capend_view.xy));
+  ba.assign(v_capend_view.xy.mul(2));
+  a.assign(dot(qa, ba).div(dot(ba, ba)).clamp(0, 1));
+  If(length(qa.sub(ba.mul(a))).greaterThan(uni_cap_r), () => Discard()); //★ שקיפות מחוץ לצורת הכמוסה
 
-          const area = _tempB.length() * 0.5;
-          totalArea += area;
-          faceAreas[i] = area;
-          faceCumulativeAreas[i] = totalArea;
-        }
+  p.assign(a.mul(2).sub(1).mul(v_capend_view)); //★ הנקודה הקרובה ביותר על קו האמצע של הכמוסה
+  q.assign(v_uv.sub(p.xy));
+  n.assign(
+    vec3(q, sqrt(uni_cap_r.mul(uni_cap_r).sub(dot(q, q)))).normalize()
+  ); //★ נורמל במבט
+  v.assign(uni_cap_r.mul(n).add(p).mul(v_size));
+  p.assign(cameraViewMatrix.mul(vec4(v_p, 1)).xyz.add(v)); //★ קואורדינטות מבט
 
-        return { faceAreas, faceCumulativeAreas, totalArea };
-      }
+  lambert.assign(dot(n, uni_light_dir_view).max(0).mul(0.4).add(0.3));
 
-      function buildMeshSamplingData(scene) {
-        const meshes = [];
+  specular.assign(
+    smoothstep(
+      0.9,
+      1.0,
+      dot(
+        reflect(p.normalize(), n),
+        uni_light_pos_view.sub(p).normalize()
+      )
+    ).mul(0.5)
+  );
 
-        scene.traverse((child) => {
-          if (!child.isMesh || !child.geometry) return;
+  d.assign(
+    uni_shadow_matrix.mul(
+      vec4(v_p.add(uni_shadow_camera_world_matrix.mul(vec4(v, 0)).xyz), 1)
+    )
+  );
+  //p.assign( d.xyz.div( d.w));
+  p.assign(d.xyz);
+  p.y.assign(p.y.oneMinus());
+  p.z.subAssign(uni_bias);
+  a.assign(
+    step(p.z, texture(rt_shadow.texture, p.xy).r)
+      .add(
+        step(p.z, texture(rt_shadow.texture, p.xy.sub(vec2(s.x, 0))).r)
+      )
+      .add(
+        step(p.z, texture(rt_shadow.texture, p.xy.add(vec2(s.x, 0))).r)
+      )
+      .add(
+        step(p.z, texture(rt_shadow.texture, p.xy.sub(vec2(0, s.y))).r)
+      )
+      .add(
+        step(p.z, texture(rt_shadow.texture, p.xy.add(vec2(0, s.y))).r)
+      )
+      .mul(0.2)
+  );
+  a.assign(a.mul(0.8).add(0.2));
 
-          const clonedGeo = child.geometry.clone();
-          clonedGeo.applyMatrix4(child.matrixWorld);
+  c.assign(lambert.mul(a).mul(v_col).mul(uni_light_col)); //★ למברט
+  c.addAssign(n.z.oneMinus().mul(uni_bg_col).mul(0.5)); //★ פרנל
+  c.addAssign(a.mul(a).mul(specular).mul(uni_light_col)); //★ ספקולר
+  //c.assign( mix( c, uni_bg_col, v_depth.mul( 0.1).min( 1))); //★ ערפל
 
-          const posAttr = clonedGeo.attributes.position;
-          if (!posAttr) return;
+  //★ כל מה שאינו חלקיק a הוא 1.0, כולל הרקע
+  //★ חלקיקים הם a פחות מ-1.0, וככל שמתקרבים ל-0.0, החלקיק בהיר יותר
+  return vec4(v_intensity.mul(1).add(c), v_intensity.oneMinus());
+})();
 
-          const uvAttr = clonedGeo.attributes.uv;
-          const colorAttr = clonedGeo.attributes.color;
-          const indexAttr = clonedGeo.index;
-          const { faceAreas, faceCumulativeAreas, totalArea } = computeFaceAreas(
-            posAttr,
-            indexAttr
-          );
-          if (totalArea <= 0) return;
-          const textureData = getTextureDataFromMaterial(child.material);
-          const materialColor = Array.isArray(child.material)
-            ? child.material.find((m) => m && m.color)?.color
-            : child.material?.color;
+const mat_particle_with_1 = (o = o.clone());
+o.vertexNode = Fn(() => vs_particle(1))();
 
-          meshes.push({
-            posAttr,
-            uvAttr,
-            colorAttr,
-            indexAttr,
-            textureData,
-            materialColor,
-            faceAreas,
-            faceCumulativeAreas,
-            totalArea,
-          });
-        });
+// =============================================================================== //
+function vs_particle_shadow(n) {
+  const att_individuality = attribute("att_individuality");
+  const att_storeuv = attribute("att_storeuv");
 
-        return meshes;
-      }
+  const f = float().toVar();
+  const p = vec4().toVar();
 
-      function pickFaceIndex(faceCumulativeAreas, r) {
-        let low = 0;
-        let high = faceCumulativeAreas.length - 1;
-        let faceIndex = 0;
+  p.assign(texture(rt_pos[n].texture, att_storeuv));
 
-        while (low <= high) {
-          const mid = (low + high) >>> 1;
-          if (r < faceCumulativeAreas[mid]) {
-            faceIndex = mid;
-            high = mid - 1;
-          } else {
-            low = mid + 1;
-          }
-        }
-
-        return faceIndex;
-      }
-
-      async function fillParticlesFromGltf(gltf, options = {}) {
-        const meshes = buildMeshSamplingData(gltf.scene);
-        if (!meshes.length) throw new Error("No mesh in GLB");
-
-        let sceneTotalArea = 0;
-        const meshCumulative = new Float32Array(meshes.length);
-        meshes.forEach((mesh, idx) => {
-          sceneTotalArea += mesh.totalArea;
-          meshCumulative[idx] = sceneTotalArea;
-        });
-
-        p = 0;
-        for (let i = 0; i < MAXPARTICLENUM; i++) {
-          const rMesh = Math.random() * sceneTotalArea;
-          let meshIndex = 0;
-          for (let m = 0; m < meshCumulative.length; m++) {
-            if (rMesh <= meshCumulative[m]) {
-              meshIndex = m;
-              break;
-            }
-          }
-
-          const {
-            posAttr,
-            uvAttr,
-            colorAttr,
-            indexAttr,
-            textureData,
-            materialColor,
-            faceCumulativeAreas,
-            totalArea,
-          } = meshes[meshIndex];
-
-          const faceR = Math.random() * totalArea;
-          const faceIndex = pickFaceIndex(faceCumulativeAreas, faceR);
-
-          let iA, iB, iC;
-          if (indexAttr) {
-            iA = indexAttr.getX(faceIndex * 3);
-            iB = indexAttr.getX(faceIndex * 3 + 1);
-            iC = indexAttr.getX(faceIndex * 3 + 2);
-          } else {
-            iA = faceIndex * 3;
-            iB = faceIndex * 3 + 1;
-            iC = faceIndex * 3 + 2;
-          }
-
-          _tempA.fromBufferAttribute(posAttr, iA);
-          _tempB.fromBufferAttribute(posAttr, iB);
-          _tempC.fromBufferAttribute(posAttr, iC);
-
-          let r1 = Math.random();
-          let r2 = Math.random();
-          if (r1 + r2 > 1) {
-            r1 = 1 - r1;
-            r2 = 1 - r2;
-          }
-          const r3 = 1 - r1 - r2;
-
-          const x = _tempA.x * r1 + _tempB.x * r2 + _tempC.x * r3;
-          const y = _tempA.y * r1 + _tempB.y * r2 + _tempC.y * r3;
-          const z = _tempA.z * r1 + _tempB.z * r2 + _tempC.z * r3;
-
-          f32_org[p] = x * 2;
-          f32_org[p + 1] = y * 2;
-          f32_org[p + 2] = z * 2;
-          f32_org[p + 3] = Math.sqrt(x * x + y * y + z * z) * 0.5;
-
-          let colorSet = false;
-          if (
-            textureData &&
-            textureData.data &&
-            textureData.width &&
-            textureData.height &&
-            uvAttr
-          ) {
-            const texWidth = textureData.width;
-            const texHeight = textureData.height;
-            const texDivisor = textureData.isFloat ? 1 : 255;
-            const uvA_x = uvAttr.getX(iA);
-            const uvA_y = uvAttr.getY(iA);
-            const uvB_x = uvAttr.getX(iB);
-            const uvB_y = uvAttr.getY(iB);
-            const uvC_x = uvAttr.getX(iC);
-            const uvC_y = uvAttr.getY(iC);
-
-            let u = uvA_x * r1 + uvB_x * r2 + uvC_x * r3;
-            let v = uvA_y * r1 + uvB_y * r2 + uvC_y * r3;
-            u = ((u % 1) + 1) % 1;
-            v = ((v % 1) + 1) % 1;
-
-            const px = Math.floor(u * (texWidth - 1));
-            const py = Math.floor(v * (texHeight - 1));
-            const idx = (py * texWidth + px) * 4;
-
-            f32_color[p] = textureData.data[idx] / texDivisor;
-            f32_color[p + 1] = textureData.data[idx + 1] / texDivisor;
-            f32_color[p + 2] = textureData.data[idx + 2] / texDivisor;
-            f32_color[p + 3] = 1.0;
-            colorSet = true;
-          }
-
-          if (!colorSet && colorAttr && colorAttr.itemSize >= 3) {
-            const colR =
-              colorAttr.getX(iA) * r1 +
-              colorAttr.getX(iB) * r2 +
-              colorAttr.getX(iC) * r3;
-            const colG =
-              colorAttr.getY(iA) * r1 +
-              colorAttr.getY(iB) * r2 +
-              colorAttr.getY(iC) * r3;
-            const colB =
-              colorAttr.getZ(iA) * r1 +
-              colorAttr.getZ(iB) * r2 +
-              colorAttr.getZ(iC) * r3;
-
-            f32_color[p] = colR;
-            f32_color[p + 1] = colG;
-            f32_color[p + 2] = colB;
-            f32_color[p + 3] = 1.0;
-            colorSet = true;
-          }
-
-          if (!colorSet && materialColor) {
-            f32_color[p] = materialColor.r;
-            f32_color[p + 1] = materialColor.g;
-            f32_color[p + 2] = materialColor.b;
-            f32_color[p + 3] = 1.0;
-            colorSet = true;
-          }
-
-          if (!colorSet && options.fallbackPalette) {
-            const colorIndex = y > 0 ? 0 : 1;
-            const palette =
-              options.fallbackPalette[colorIndex] ||
-              options.fallbackPalette[0];
-            f32_color[p] = palette[0];
-            f32_color[p + 1] = palette[1];
-            f32_color[p + 2] = palette[2];
-            f32_color[p + 3] = 1.0;
-            colorSet = true;
-          }
-
-          if (!colorSet) {
-            const c = options.defaultColor || [1, 1, 1];
-            f32_color[p] = c[0];
-            f32_color[p + 1] = c[1];
-            f32_color[p + 2] = c[2];
-            f32_color[p + 3] = 1.0;
-          }
-
-          p += 4;
-        }
-
-        tex_org.needsUpdate = true;
-        tex_color.needsUpdate = true;
-      }
-
-      // Load GLB model and sample particles
-      async function loadGLBModel() {
-        try {
-          const loader = new GLTFLoader();
-          const gltf = await loader.loadAsync("./solCme_logo.glb");
-
-          gltf.scene.updateMatrixWorld(true);
-
-          await fillParticlesFromGltf(gltf, { defaultColor: [1, 1, 1] });
-          console.log("GLB model loaded and particles sampled with texture colors");
-
-          // Start animation after model is loaded
-          ren.setAnimationLoop(tic);
-        } catch (error) {
-          console.error("Error loading GLB model:", error);
-          // Fallback to torus if loading fails
-          p = 0;
-          for (i = 0; i < MAXPARTICLENUM; i++) {
-            let r = 0.25;
-            a = 6.28318 * Math.random();
-            f32_org[p + 2] = r * Math.cos(a);
-            r = 1 + r * Math.sin(a);
-            a = 2.4 * i;
-            f32_org[p] = r * Math.cos(a);
-            f32_org[p + 1] = r * Math.sin(a);
-            p += 4;
-          }
-          tex_org.needsUpdate = true;
-          ren.setAnimationLoop(tic);
-        }
-      }
-
-      // =============================================================================== //
-      function mm_hash12(iw) {
-        const w = iw.mul(0.000303).add(fract(iw.mul(0.707)));
-        const a = w.x.add(w.y.mul(0.3));
-
-        a.assign(fract(a));
-        a.assign(a.sub(a.mul(a)));
-
-        return fract(a.mul(937652.481));
-      }
-
-      function rnd_dir(ip) {
-        return fract(
-          vec3(1, 99, 9999).mul(mm_hash12(ip.xy.add(ip.zz.mul(100))))
-        ).sub(0.5);
-      }
-
-      function simplex3d(p) {
-        const ip = floor(p.add(dot(vec3(0.333333), p)));
-        const p0 = p.sub(ip).add(dot(vec3(0.166666), ip));
-
-        const f = step(p0.yzx, p0);
-        const ff = f.mul(f.zxy);
-        const v1 = f.sub(ff);
-        const v2 = ff.sub(f.zxy).add(1);
-
-        const p1 = p0.sub(v1).add(0.166666);
-        const p2 = p0.sub(v2).add(0.333333);
-        const p3 = p0.sub(1).add(0.5);
-
-        const d = vec4(dot(p0, p0), dot(p1, p1), dot(p2, p2), dot(p3, p3))
-          .negate()
-          .add(0.58)
-          .max(0);
-        d.assign(d.mul(d));
-        d.assign(d.mul(d));
-
-        return dot(
-          vec4(
-            dot(p0, rnd_dir(ip)),
-            dot(p1, rnd_dir(ip.add(v1))),
-            dot(p2, rnd_dir(ip.add(v2))),
-            dot(p3, rnd_dir(ip.add(1)))
-          ),
-          d
+  f.assign(smoothstep(0, 0.25, p.w.oneMinus().mul(p.w)));
+  v_uv.assign(positionGeometry.xy.mul(2));
+  p.assign(
+    cameraProjectionMatrix.mul(
+      modelViewMatrix
+        .mul(vec4(p.xyz, 1))
+        .add(
+          att_individuality.y
+            .mul(uni_master_size)
+            .mul(f)
+            .mul(vec4(positionGeometry, 1))
         )
-          .mul(40)
-          .add(0.5);
+    )
+  );
+  v_depth.assign(p.z);
+  return p;
+}
+
+const mat_particle_shadow_with_0 = (o = new THREE.NodeMaterial());
+
+o.vertexNode = Fn(() => vs_particle_shadow(0))();
+
+o.fragmentNode = Fn(() => {
+  If(dot(v_uv, v_uv).greaterThan(1), () => Discard());
+  return vec4(v_depth, 0, 0, 0);
+})();
+
+const mat_particle_shadow_with_1 = (o = o.clone());
+o.vertexNode = Fn(() => vs_particle_shadow(1))();
+
+// =============================================================================== //
+const mat_obj = (o = new THREE.NodeMaterial());
+
+o.vertexNode = Fn(() => {
+  v_p.assign(positionWorld);
+  v_n.assign(normalWorld);
+  const d = cameraProjectionMatrix.mul(vec4(positionView, 1));
+  v_depth.assign(d.z);
+  return d;
+})();
+
+o.fragmentNode = Fn(() => {
+  const a = float().toVar();
+  const blue = float().toVar();
+  const lambert = float().toVar();
+  const specular = float().toVar();
+
+  const s = vec2(7 / shadow_w);
+
+  const c = vec3().toVar();
+  const p = vec3().toVar();
+
+  const d = vec4().toVar();
+
+  blue.assign(texture(tex_blue, screenCoordinate.xy.mul(1 / 128)).r);
+  If(blue.greaterThan(v_depth.mul(3)), () => Discard()); //★ דיטרינג שקיפות כשקרוב למצלמה
+
+  lambert.assign(dot(v_n, uni_light_dir).max(0));
+
+  specular.assign(
+    smoothstep(
+      0.9,
+      1,
+      dot(
+        reflect(normalize(v_p.sub(cameraPosition)), v_n),
+        normalize(uni_light_pos.sub(v_p))
+      )
+    ).mul(0.1)
+  );
+
+  d.assign(uni_shadow_matrix.mul(vec4(v_p, 1)));
+  //p.assign( d.xyz.div( d.w));
+  p.assign(d.xyz);
+  p.y.assign(p.y.oneMinus());
+  p.z.subAssign(uni_bias);
+  a.assign(
+    step(p.z, texture(rt_shadow.texture, p.xy).r)
+      .add(
+        step(p.z, texture(rt_shadow.texture, p.xy.sub(vec2(s.x, 0))).r)
+      )
+      .add(
+        step(p.z, texture(rt_shadow.texture, p.xy.add(vec2(s.x, 0))).r)
+      )
+      .add(
+        step(p.z, texture(rt_shadow.texture, p.xy.sub(vec2(0, s.y))).r)
+      )
+      .add(
+        step(p.z, texture(rt_shadow.texture, p.xy.add(vec2(0, s.y))).r)
+      )
+      .mul(0.2)
+  );
+  a.assign(a.mul(0.6).add(0.4));
+
+  c.assign(
+    lambert
+      .mul(a)
+      .mul(0.7)
+      .add(0.1)
+      .mul(uni_light_col)
+      .mul(vec3(0.4, 0.35, 0.4))
+  ); //★ למברט
+  c.addAssign(uni_bg_col.mul(0.3)); //★ אמביינט
+  c.addAssign(a.mul(specular).mul(uni_light_col)); //★ ספקולר
+  //c.assign( mix( c, uni_bg_col, v_depth.mul( 0.1).min( 1))); //★ ערפל
+  c.addAssign(blue.mul(0.05)); //★ דיטרינג
+
+  return vec4(c, 1);
+})();
+
+// =============================================================================== //
+const mat_obj_shadow = (o = new THREE.NodeMaterial());
+
+o.vertexNode = Fn(() => {
+  const d = cameraProjectionMatrix.mul(vec4(positionView, 1));
+  v_depth.assign(d.z);
+  return d;
+})();
+o.fragmentNode = vec4(v_depth, 0, 0, 0);
+
+// =============================================================================== //
+// האובייקטים הוסרו מהסצנה לפי בקשת המשתמש
+// const obj_1 = o = new THREE.Mesh( new THREE.BoxGeometry( 5, 0.1, 5));
+// o.position.y = -1.5;
+// scene.add( o);
+
+// const obj_2 = o = new THREE.Mesh( new THREE.BoxGeometry( 0.6, 0.6, 0.6));
+// o.position.set( 0, -1, -1.5);
+// o.rotation.y = 0.25 * 3.14159;
+// scene.add( o);
+
+// const obj_3 = o = new THREE.Mesh( new THREE.SphereGeometry( 0.4, 50, 25));
+// o.position.set( 0, -1, 1.5);
+// scene.add( o);
+
+// =============================================================================== //
+window.addEventListener("resize", onWindowResize);
+
+onWindowResize(); //★ קורא לפונקציה בעצמו פעם אחת בהתחלה
+function onWindowResize() {
+  const panel = document.getElementById('control-panel');
+  const isMobile = window.innerWidth < 768;
+  const isPanelOpen = panel && !panel.classList.contains('collapsed');
+
+  let w, h;
+
+  if (isPanelOpen) {
+    if (isMobile) {
+      // Mobile: panel takes top 50%, canvas takes bottom 50%
+      w = window.innerWidth;
+      h = window.innerHeight * 0.5;
+    } else {
+      // Desktop: panel takes right 50%, canvas takes left 50%
+      w = window.innerWidth * 0.5;
+      h = window.innerHeight;
+    }
+  } else {
+    // Panel closed: full screen
+    w = window.innerWidth;
+    h = window.innerHeight;
+  }
+
+  ren.setSize(w, h);
+  cam.aspect = w / h;
+  cam.updateProjectionMatrix();
+}
+window.addEventListener("keydown", (e) => {
+  if (e.keyCode === 49) {
+    ctr.hue = 0.02; //★ מקש 1 - מצב שחור-לבן
+    updateDisplayStatus();
+  }
+  if (e.keyCode === 50) {
+    ctr.hue = 1; //★ מקש 2 - מצב צבעוני
+    updateDisplayStatus();
+  }
+  if (e.keyCode === 51) {
+    ctr.master_power = 1.9;
+    ctr.shaggy = 2; //★ מקש 3 - עוצמה מקסימלית
+    updateDisplayStatus();
+  }
+  if (e.keyCode === 52) {
+    ctr.master_power = 1;
+    ctr.shaggy = 1; //★ מקש 4 - עוצמה רגילה
+    updateDisplayStatus();
+  }
+  if (e.keyCode === 80) {
+    // Key P - הפעל/כבה פוסט-פרוססינג
+    ctr.is_pp = !ctr.is_pp;
+    updateDisplayStatus();
+  }
+  if (e.keyCode === 82) {
+    // Key R - אפס מצלמה
+    cam.position.set(-1, 0.5, 2.5);
+    my_orbit_controls.target.set(0, 0, 0);
+    my_orbit_controls.update();
+  }
+});
+
+// =============================================================================== //
+my_time = 0;
+
+// Load the GLB model before starting animation
+loadGLBModel();
+
+function tic() {
+  let i;
+  let r, g, b, w, h, t;
+  let o;
+
+  if (my_time < 0) return;
+
+  if (my_time == 0) {
+    plane_o.material = mat_init_phase;
+    ren.setRenderTarget(rt_pos[rt_pos_n]);
+    ren.render(scene_o, cam_o);
+  }
+
+  // =============================================================================== //
+  t = 0.0017 * ctr.timespeed;
+  spin_time += 0.3 * Math.pow(ctr.spin_speed, 3) * t;
+  ibg.instanceCount = ctr.count;
+
+  //capsules.rotation.x = 0.5 * Math.sin( 0.3 * my_time);
+  capsules.rotation.z -= 0.001 * t;
+  // obj_2.rotation.y += 0.3 * t;
+
+  // =============================================================================== //
+  uni_spin_scale.value = 0.5 + 3 * Math.pow(1 - 0.5 * ctr.spin_scale, 4);
+  uni_spin_time.value = spin_time;
+  uni_shaggy.value = 5 * Math.pow(ctr.shaggy, 2);
+
+  plane_o.material = rt_pos_n < 1 ? mat_velo_with_0 : mat_velo_with_1;
+  ren.setRenderTarget(rt_velo);
+  ren.render(scene_o, cam_o);
+
+  // =============================================================================== //
+  uni_master_power.value = 4.8 * t * Math.pow(ctr.master_power, 2);
+  uni_master_metabolism.value =
+    0.6 * t * Math.pow(ctr.master_metabolism, 2);
+
+  plane_o.material = rt_pos_n < 1 ? mat_pos_with_0 : mat_pos_with_1;
+  rt_pos_n = 1 - rt_pos_n;
+  ren.setRenderTarget(rt_pos[rt_pos_n]);
+  ren.render(scene_o, cam_o);
+
+  // =============================================================================== //
+  uni_cap_r.value = 1 - 0.6 * Math.pow(ctr.capsule, 0.6);
+  uni_master_size.value = 0.005 + 0.035 * ctr.master_size;
+
+  capsules.material =
+    rt_pos_n < 1
+      ? mat_particle_shadow_with_0
+      : mat_particle_shadow_with_1;
+  // obj_1.material =
+  // obj_2.material =
+  // obj_3.material = mat_obj_shadow;
+
+  cam_s.position.set(
+    10 * Math.cos(0.18 * my_time),
+    8,
+    -10 * Math.sin(0.18 * my_time)
+  );
+  cam_s.lookAt(0, -1.5, 0);
+
+  ren.setRenderTarget(rt_shadow);
+  ren.setClearColor(0x000000, 1); //★ 1 זה אלפא
+  ren.render(scene, cam_s);
+
+  // =============================================================================== //
+  uni_time.value = my_time;
+  uni_hue.value = ctr.hue;
+  uni_shadow_matrix.value = new THREE.Matrix4()
+    .set(0.5, 0, 0, 0.5, 0, 0.5, 0, 0.5, 0, 0, 1, 0, 0, 0, 0, 1)
+    .multiply(cam_s.projectionMatrix)
+    .multiply(cam_s.matrixWorldInverse);
+  uni_shadow_camera_world_matrix.value = cam_s.matrixWorld;
+  uni_bias.value = ctr.bias;
+  uni_light_pos_view.value = cam_s.position
+    .clone()
+    .applyMatrix4(cam.matrixWorldInverse);
+  uni_light_dir_view.value = uni_light_pos_view.value.clone().normalize();
+  if (ctr.hue == 0 || ctr.hue == 1) {
+    uni_light_col.value = new THREE.Vector3(1, 1, 1);
+    uni_bg_col.value = new THREE.Vector3(0, 0, 0);
+  } else {
+    r = 1 + Math.cos(6.28 * ctr.hue);
+    g = 1 + Math.cos(6.28 * ctr.hue + 2.1);
+    b = 1 + Math.cos(6.28 * ctr.hue + 4.2);
+    uni_light_col.value = new THREE.Vector3(
+      0.2 + 0.4 * r,
+      0.1 + 0.4 * g,
+      0.2 + 0.4 * b
+    );
+    uni_bg_col.value = new THREE.Vector3(0.09 * r, 0.07 * g, 0.08 * b);
+  }
+
+  uni_light_pos.value = cam_s.position;
+  uni_light_dir.value = cam_s.position.clone().normalize();
+
+  capsules.material =
+    rt_pos_n < 1 ? mat_particle_with_0 : mat_particle_with_1;
+  // obj_1.material =
+  // obj_2.material =
+  // obj_3.material = mat_obj;
+
+  if (ctr.is_pp) {
+    const u = new THREE.Vector2();
+    ren.getSize(u);
+    w = dpr * u.width;
+    h = dpr * u.height;
+    if (w !== rt_scene.width || h !== rt_scene.height) {
+      rt_scene.setSize(w, h);
+      rt_only_particles.setSize(w, h);
+      rt_bloom.setSize(w, h);
+      uni_wh.value.set(w, h);
+      for (i = 0; i < 5; i++) {
+        w = Math.round(w / 2);
+        h = Math.round(h / 2);
+        rt_blur[i].setSize(w, h);
       }
-
-      function fs_velo(n) {
-        const e = vec2(0.01, 0);
-        const m = float().toVar();
-
-        const p = vec3().toVar();
-        const v = vec3().toVar();
-
-        m.assign(0.3);
-        p.assign(
-          texture(rt_pos[n].texture, vec2(uv().x, uv().y.oneMinus()))
-            .xyz.mul(uni_spin_scale)
-            .add(vec3(0, 0, uni_spin_time))
-        );
-
-        v.addAssign(
-          vec3(
-            simplex3d(p.add(e.xyy)),
-            simplex3d(p.add(e.yxy)),
-            simplex3d(p.add(e.yyx))
-          )
-            .sub(simplex3d(p))
-            .mul(m)
-        );
-
-        m.mulAssign(uni_shaggy);
-        p.mulAssign(2);
-        v.addAssign(
-          vec3(
-            simplex3d(p.add(e.xyy)),
-            simplex3d(p.add(e.yxy)),
-            simplex3d(p.add(e.yyx))
-          )
-            .sub(simplex3d(p))
-            .mul(m)
-        );
-
-        return vec4(v.y.negate(), v.x, v.x.mul(v.y).sub(v.z), 0);
-      }
-
-      const mat_velo_with_0 = (o = new THREE.NodeMaterial());
-      o.fragmentNode = Fn(() => fs_velo(0))();
-
-      const mat_velo_with_1 = (o = o.clone());
-      o.fragmentNode = Fn(() => fs_velo(1))();
-
-      const rt_velo = new THREE.RenderTarget(WC, WC, {
-        type: THREE.FloatType,
-        minFilter: THREE.NearestFilter,
-        magFilter: THREE.NearestFilter,
-      });
-
-      // =============================================================================== //
-      const mat_init_phase = (o = new THREE.NodeMaterial());
-
-      o.fragmentNode = Fn(() => {
-        return vec4(
-          texture(tex_org, vec2(uv().x, uv().y.oneMinus())).xyz,
-          uv().x.add(uv().y).mul(1234.56789).fract()
-        );
-      })();
-
-      // =============================================================================== //
-      const v_power = varying(0);
-      const v_metabolism = varying(0);
-
-      function fs_pos(n) {
-        const w = vec2().toVar();
-
-        const d = vec4().toVar();
-
-        w.assign(vec2(uv().x, uv().y.oneMinus()));
-        d.assign(texture(rt_pos[n].texture, w));
-        d.xyz.addAssign(texture(rt_velo.texture, w).xyz.mul(v_power));
-        d.w.subAssign(v_metabolism);
-        If(d.w.lessThan(0), () => {
-          d.xyz.assign(texture(tex_org, w).xyz);
-          d.w.addAssign(1);
-        });
-        return d;
-      }
-
-      const mat_pos_with_0 = (o = new THREE.NodeMaterial());
-
-      o.vertexNode = Fn(() => {
-        v_power.assign(
-          uv()
-            .x.add(uv().y)
-            .mul(387.654321)
-            .fract()
-            .add(1)
-            .mul(uni_master_power)
-        );
-        v_metabolism.assign(
-          uv()
-            .x.add(uv().y)
-            .mul(1234.56789)
-            .fract()
-            .mul(0.5)
-            .add(0.5)
-            .mul(uni_master_metabolism)
-        );
-        return cameraProjectionMatrix.mul(vec4(positionView, 1));
-      })();
-      o.fragmentNode = Fn(() => fs_pos(0))();
-
-      const mat_pos_with_1 = (o = o.clone());
-      o.fragmentNode = Fn(() => fs_pos(1))();
-
-      const rt_pos = new Array(2);
-      rt_pos[0] = new THREE.RenderTarget(WC, WC, {
-        type: THREE.FloatType,
-        minFilter: THREE.NearestFilter,
-        magFilter: THREE.NearestFilter,
-      });
-      rt_pos[1] = rt_pos[0].clone();
-      let rt_pos_n = 0;
-
-      // =============================================================================== //
-      o = new THREE.PlaneGeometry(1, 1);
-      const ibg = new THREE.InstancedBufferGeometry();
-      ibg.index = o.index;
-      ibg.setAttribute("position", o.getAttribute("position"));
-      ibg.maxInstancedCount = MAXPARTICLENUM;
-
-      const f32_individuality = new Float32Array(MAXPARTICLENUM * 2);
-      p = 0;
-      for (i = 0; i < MAXPARTICLENUM; i++) {
-        //f32_individuality[ i] = i < 0.005 * MAXPARTICLENUM //★ הפרטים הראשונים 0.5% בהירים יותר
-        f32_individuality[p++] =
-          Math.random() < 0.005 //★ 0.5% מהפרטים אקראיים בהירים יותר
-            ? 0.5 + 0.5 * Math.random()
-            : 0.04 + 0.02 * Math.random();
-        f32_individuality[p++] = 0.1 + 1.4 * Math.random(); //★ גודל
-      }
-      ibg.setAttribute(
-        "att_individuality",
-        new THREE.InstancedBufferAttribute(f32_individuality, 2)
-      );
-
-      const f32_storeuv = new Float32Array(WC * WC * 2);
-      p = 0;
-      for (let y = 0.5; y < WC; y++) {
-        for (let x = 0.5; x < WC; x++) {
-          f32_storeuv[p++] = x / WC;
-          f32_storeuv[p++] = y / WC;
-        }
-      }
-      ibg.setAttribute(
-        "att_storeuv",
-        new THREE.InstancedBufferAttribute(f32_storeuv, 2)
-      );
-
-      const capsules = new THREE.Mesh(ibg, null, MAXPARTICLENUM);
-      capsules.frustumCulled = false;
-      scene.add(capsules);
-
-      // =============================================================================== //
-      const v_size = varying(0);
-      const v_intensity = varying(0);
-      const v_uv = varying(vec2());
-      const v_p = varying(vec3());
-      const v_n = varying(vec3());
-      const v_depth = varying(0);
-      const v_capend_view = varying(vec3());
-      const v_col = varying(vec3());
-
-      function vs_particle(n) {
-        const att_individuality = attribute("att_individuality");
-        const att_storeuv = attribute("att_storeuv");
-
-        const a = float().toVar();
-        const b = float().toVar();
-        const d = vec4().toVar();
-
-        d.assign(texture(rt_pos[n].texture, att_storeuv));
-
-        If(uni_use_original_colors.greaterThan(0.5), () => {
-          // Use original colors from texture
-          v_col.assign(texture(tex_color, att_storeuv).rgb);
-        })
-          .ElseIf(uni_hue.greaterThan(0), () => {
-            a.assign(
-              simplex3d(
-                d.xyz.mul(0.3).add(vec3(0, 0, uni_time.mul(0.18)))
-              ).fract()
-            );
-            b.assign(0.05);
-            v_col.assign(
-              smoothstep(b.negate(), b, a.sub(0.2))
-                .mul(smoothstep(b.negate(), b, float(0.8).sub(a)))
-                .mul(0.8)
-                .add(0.2)
-                .mul(
-                  vec3(
-                    smoothstep(b.negate(), b, a.sub(0.0))
-                      .mul(smoothstep(b.negate(), b, float(0.575).sub(a)))
-                      .mul(0.5)
-                      .add(0.5),
-                    smoothstep(b.negate(), b, a.sub(0.3))
-                      .mul(smoothstep(b.negate(), b, float(0.75).sub(a)))
-                      .mul(0.7)
-                      .add(0.3),
-                    smoothstep(b.negate(), b, a.sub(0.425))
-                      .mul(smoothstep(b.negate(), b, float(1).sub(a)))
-                      .mul(0.5)
-                      .add(0.5)
-                  )
-                )
-            );
-          })
-          .Else(() => {
-            v_col.assign(vec3(0.5));
-          });
-
-        v_intensity.assign(att_individuality.x);
-
-        a.assign(smoothstep(0, 0.25, d.w.oneMinus().mul(d.w)));
-        v_size.assign(att_individuality.y.mul(uni_master_size).mul(a));
-        v_uv.assign(positionGeometry.xy.mul(2));
-        v_p.assign(modelWorldMatrix.mul(vec4(d.xyz, 1)).xyz);
-        d.assign(
-          cameraProjectionMatrix.mul(
-            cameraViewMatrix
-              .mul(vec4(v_p, 1))
-              .add(vec4(positionGeometry.mul(v_size), 0))
-          )
-        );
-        v_depth.assign(d.z);
-        v_capend_view.assign(
-          modelViewMatrix
-            .mul(texture(rt_velo.texture, att_storeuv))
-            .xyz.normalize()
-            .mul(uni_cap_r.oneMinus())
-        );
-        return d;
-      }
-
-      const mat_particle_with_0 = (o = new THREE.NodeMaterial());
-
-      o.vertexNode = Fn(() => vs_particle(0))();
-
-      o.fragmentNode = Fn(() => {
-        const a = float().toVar();
-        const z = float().toVar();
-        const blue = float().toVar();
-        const lambert = float().toVar();
-        const specular = float().toVar();
-
-        const q = vec2().toVar();
-        const qa = vec2().toVar();
-        const ba = vec2().toVar();
-        const s = vec2(7 / shadow_w);
-
-        const c = vec3().toVar();
-        const n = vec3().toVar();
-        const p = vec3().toVar();
-        const v = vec3().toVar();
-
-        const d = vec4().toVar();
-
-        q.assign(v_uv);
-        If(dot(q, q).greaterThan(1), () => Discard()); //★ שקיפות מחוץ לעיגול
-
-        blue.assign(texture(tex_blue, screenCoordinate.xy.mul(1 / 128)).r);
-        If(blue.greaterThan(v_depth.mul(3)), () => Discard()); //★ דיטרינג שקיפות כשקרוב למצלמה
-
-        qa.assign(q.add(v_capend_view.xy));
-        ba.assign(v_capend_view.xy.mul(2));
-        a.assign(dot(qa, ba).div(dot(ba, ba)).clamp(0, 1));
-        If(length(qa.sub(ba.mul(a))).greaterThan(uni_cap_r), () => Discard()); //★ שקיפות מחוץ לצורת הכמוסה
-
-        p.assign(a.mul(2).sub(1).mul(v_capend_view)); //★ הנקודה הקרובה ביותר על קו האמצע של הכמוסה
-        q.assign(v_uv.sub(p.xy));
-        n.assign(
-          vec3(q, sqrt(uni_cap_r.mul(uni_cap_r).sub(dot(q, q)))).normalize()
-        ); //★ נורמל במבט
-        v.assign(uni_cap_r.mul(n).add(p).mul(v_size));
-        p.assign(cameraViewMatrix.mul(vec4(v_p, 1)).xyz.add(v)); //★ קואורדינטות מבט
-
-        lambert.assign(dot(n, uni_light_dir_view).max(0).mul(0.4).add(0.3));
-
-        specular.assign(
-          smoothstep(
-            0.9,
-            1.0,
-            dot(
-              reflect(p.normalize(), n),
-              uni_light_pos_view.sub(p).normalize()
-            )
-          ).mul(0.5)
-        );
-
-        d.assign(
-          uni_shadow_matrix.mul(
-            vec4(v_p.add(uni_shadow_camera_world_matrix.mul(vec4(v, 0)).xyz), 1)
-          )
-        );
-        //p.assign( d.xyz.div( d.w));
-        p.assign(d.xyz);
-        p.y.assign(p.y.oneMinus());
-        p.z.subAssign(uni_bias);
-        a.assign(
-          step(p.z, texture(rt_shadow.texture, p.xy).r)
-            .add(
-              step(p.z, texture(rt_shadow.texture, p.xy.sub(vec2(s.x, 0))).r)
-            )
-            .add(
-              step(p.z, texture(rt_shadow.texture, p.xy.add(vec2(s.x, 0))).r)
-            )
-            .add(
-              step(p.z, texture(rt_shadow.texture, p.xy.sub(vec2(0, s.y))).r)
-            )
-            .add(
-              step(p.z, texture(rt_shadow.texture, p.xy.add(vec2(0, s.y))).r)
-            )
-            .mul(0.2)
-        );
-        a.assign(a.mul(0.8).add(0.2));
-
-        c.assign(lambert.mul(a).mul(v_col).mul(uni_light_col)); //★ למברט
-        c.addAssign(n.z.oneMinus().mul(uni_bg_col).mul(0.5)); //★ פרנל
-        c.addAssign(a.mul(a).mul(specular).mul(uni_light_col)); //★ ספקולר
-        //c.assign( mix( c, uni_bg_col, v_depth.mul( 0.1).min( 1))); //★ ערפל
-
-        //★ כל מה שאינו חלקיק a הוא 1.0, כולל הרקע
-        //★ חלקיקים הם a פחות מ-1.0, וככל שמתקרבים ל-0.0, החלקיק בהיר יותר
-        return vec4(v_intensity.mul(1).add(c), v_intensity.oneMinus());
-      })();
-
-      const mat_particle_with_1 = (o = o.clone());
-      o.vertexNode = Fn(() => vs_particle(1))();
-
-      // =============================================================================== //
-      function vs_particle_shadow(n) {
-        const att_individuality = attribute("att_individuality");
-        const att_storeuv = attribute("att_storeuv");
-
-        const f = float().toVar();
-        const p = vec4().toVar();
-
-        p.assign(texture(rt_pos[n].texture, att_storeuv));
-
-        f.assign(smoothstep(0, 0.25, p.w.oneMinus().mul(p.w)));
-        v_uv.assign(positionGeometry.xy.mul(2));
-        p.assign(
-          cameraProjectionMatrix.mul(
-            modelViewMatrix
-              .mul(vec4(p.xyz, 1))
-              .add(
-                att_individuality.y
-                  .mul(uni_master_size)
-                  .mul(f)
-                  .mul(vec4(positionGeometry, 1))
-              )
-          )
-        );
-        v_depth.assign(p.z);
-        return p;
-      }
-
-      const mat_particle_shadow_with_0 = (o = new THREE.NodeMaterial());
-
-      o.vertexNode = Fn(() => vs_particle_shadow(0))();
-
-      o.fragmentNode = Fn(() => {
-        If(dot(v_uv, v_uv).greaterThan(1), () => Discard());
-        return vec4(v_depth, 0, 0, 0);
-      })();
-
-      const mat_particle_shadow_with_1 = (o = o.clone());
-      o.vertexNode = Fn(() => vs_particle_shadow(1))();
-
-      // =============================================================================== //
-      const mat_obj = (o = new THREE.NodeMaterial());
-
-      o.vertexNode = Fn(() => {
-        v_p.assign(positionWorld);
-        v_n.assign(normalWorld);
-        const d = cameraProjectionMatrix.mul(vec4(positionView, 1));
-        v_depth.assign(d.z);
-        return d;
-      })();
-
-      o.fragmentNode = Fn(() => {
-        const a = float().toVar();
-        const blue = float().toVar();
-        const lambert = float().toVar();
-        const specular = float().toVar();
-
-        const s = vec2(7 / shadow_w);
-
-        const c = vec3().toVar();
-        const p = vec3().toVar();
-
-        const d = vec4().toVar();
-
-        blue.assign(texture(tex_blue, screenCoordinate.xy.mul(1 / 128)).r);
-        If(blue.greaterThan(v_depth.mul(3)), () => Discard()); //★ דיטרינג שקיפות כשקרוב למצלמה
-
-        lambert.assign(dot(v_n, uni_light_dir).max(0));
-
-        specular.assign(
-          smoothstep(
-            0.9,
-            1,
-            dot(
-              reflect(normalize(v_p.sub(cameraPosition)), v_n),
-              normalize(uni_light_pos.sub(v_p))
-            )
-          ).mul(0.1)
-        );
-
-        d.assign(uni_shadow_matrix.mul(vec4(v_p, 1)));
-        //p.assign( d.xyz.div( d.w));
-        p.assign(d.xyz);
-        p.y.assign(p.y.oneMinus());
-        p.z.subAssign(uni_bias);
-        a.assign(
-          step(p.z, texture(rt_shadow.texture, p.xy).r)
-            .add(
-              step(p.z, texture(rt_shadow.texture, p.xy.sub(vec2(s.x, 0))).r)
-            )
-            .add(
-              step(p.z, texture(rt_shadow.texture, p.xy.add(vec2(s.x, 0))).r)
-            )
-            .add(
-              step(p.z, texture(rt_shadow.texture, p.xy.sub(vec2(0, s.y))).r)
-            )
-            .add(
-              step(p.z, texture(rt_shadow.texture, p.xy.add(vec2(0, s.y))).r)
-            )
-            .mul(0.2)
-        );
-        a.assign(a.mul(0.6).add(0.4));
-
-        c.assign(
-          lambert
-            .mul(a)
-            .mul(0.7)
-            .add(0.1)
-            .mul(uni_light_col)
-            .mul(vec3(0.4, 0.35, 0.4))
-        ); //★ למברט
-        c.addAssign(uni_bg_col.mul(0.3)); //★ אמביינט
-        c.addAssign(a.mul(specular).mul(uni_light_col)); //★ ספקולר
-        //c.assign( mix( c, uni_bg_col, v_depth.mul( 0.1).min( 1))); //★ ערפל
-        c.addAssign(blue.mul(0.05)); //★ דיטרינג
-
-        return vec4(c, 1);
-      })();
-
-      // =============================================================================== //
-      const mat_obj_shadow = (o = new THREE.NodeMaterial());
-
-      o.vertexNode = Fn(() => {
-        const d = cameraProjectionMatrix.mul(vec4(positionView, 1));
-        v_depth.assign(d.z);
-        return d;
-      })();
-      o.fragmentNode = vec4(v_depth, 0, 0, 0);
-
-      // =============================================================================== //
-      // האובייקטים הוסרו מהסצנה לפי בקשת המשתמש
-      // const obj_1 = o = new THREE.Mesh( new THREE.BoxGeometry( 5, 0.1, 5));
-      // o.position.y = -1.5;
-      // scene.add( o);
-
-      // const obj_2 = o = new THREE.Mesh( new THREE.BoxGeometry( 0.6, 0.6, 0.6));
-      // o.position.set( 0, -1, -1.5);
-      // o.rotation.y = 0.25 * 3.14159;
-      // scene.add( o);
-
-      // const obj_3 = o = new THREE.Mesh( new THREE.SphereGeometry( 0.4, 50, 25));
-      // o.position.set( 0, -1, 1.5);
-      // scene.add( o);
-
-      // =============================================================================== //
-      window.addEventListener("resize", onWindowResize);
-
-      onWindowResize(); //★ קורא לפונקציה בעצמו פעם אחת בהתחלה
-      function onWindowResize() {
-        const panel = document.getElementById('control-panel');
-        const isMobile = window.innerWidth < 768;
-        const isPanelOpen = panel && !panel.classList.contains('collapsed');
-
-        let w, h;
-
-        if (isPanelOpen) {
-          if (isMobile) {
-            // Mobile: panel takes top 50%, canvas takes bottom 50%
-            w = window.innerWidth;
-            h = window.innerHeight * 0.5;
-          } else {
-            // Desktop: panel takes right 50%, canvas takes left 50%
-            w = window.innerWidth * 0.5;
-            h = window.innerHeight;
-          }
-        } else {
-          // Panel closed: full screen
-          w = window.innerWidth;
-          h = window.innerHeight;
-        }
-
-        ren.setSize(w, h);
-        cam.aspect = w / h;
-        cam.updateProjectionMatrix();
-      }
-      window.addEventListener("keydown", (e) => {
-        if (e.keyCode === 49) {
-          ctr.hue = 0.02; //★ מקש 1 - מצב שחור-לבן
-          updateDisplayStatus();
-        }
-        if (e.keyCode === 50) {
-          ctr.hue = 1; //★ מקש 2 - מצב צבעוני
-          updateDisplayStatus();
-        }
-        if (e.keyCode === 51) {
-          ctr.master_power = 1.9;
-          ctr.shaggy = 2; //★ מקש 3 - עוצמה מקסימלית
-          updateDisplayStatus();
-        }
-        if (e.keyCode === 52) {
-          ctr.master_power = 1;
-          ctr.shaggy = 1; //★ מקש 4 - עוצמה רגילה
-          updateDisplayStatus();
-        }
-        if (e.keyCode === 80) {
-          // Key P - הפעל/כבה פוסט-פרוססינג
-          ctr.is_pp = !ctr.is_pp;
-          updateDisplayStatus();
-        }
-        if (e.keyCode === 82) {
-          // Key R - אפס מצלמה
-          cam.position.set(-1, 0.5, 2.5);
-          my_orbit_controls.target.set(0, 0, 0);
-          my_orbit_controls.update();
-        }
-      });
-
-      // =============================================================================== //
-      my_time = 0;
-
-      // Load the GLB model before starting animation
-      loadGLBModel();
-
-      function tic() {
-        let i;
-        let r, g, b, w, h, t;
-        let o;
-
-        if (my_time < 0) return;
-
-        if (my_time == 0) {
-          plane_o.material = mat_init_phase;
-          ren.setRenderTarget(rt_pos[rt_pos_n]);
-          ren.render(scene_o, cam_o);
-        }
-
-        // =============================================================================== //
-        t = 0.0017 * ctr.timespeed;
-        spin_time += 0.3 * Math.pow(ctr.spin_speed, 3) * t;
-        ibg.instanceCount = ctr.count;
-
-        //capsules.rotation.x = 0.5 * Math.sin( 0.3 * my_time);
-        capsules.rotation.z -= 0.001 * t;
-        // obj_2.rotation.y += 0.3 * t;
-
-        // =============================================================================== //
-        uni_spin_scale.value = 0.5 + 3 * Math.pow(1 - 0.5 * ctr.spin_scale, 4);
-        uni_spin_time.value = spin_time;
-        uni_shaggy.value = 5 * Math.pow(ctr.shaggy, 2);
-
-        plane_o.material = rt_pos_n < 1 ? mat_velo_with_0 : mat_velo_with_1;
-        ren.setRenderTarget(rt_velo);
-        ren.render(scene_o, cam_o);
-
-        // =============================================================================== //
-        uni_master_power.value = 4.8 * t * Math.pow(ctr.master_power, 2);
-        uni_master_metabolism.value =
-          0.6 * t * Math.pow(ctr.master_metabolism, 2);
-
-        plane_o.material = rt_pos_n < 1 ? mat_pos_with_0 : mat_pos_with_1;
-        rt_pos_n = 1 - rt_pos_n;
-        ren.setRenderTarget(rt_pos[rt_pos_n]);
-        ren.render(scene_o, cam_o);
-
-        // =============================================================================== //
-        uni_cap_r.value = 1 - 0.6 * Math.pow(ctr.capsule, 0.6);
-        uni_master_size.value = 0.005 + 0.035 * ctr.master_size;
-
-        capsules.material =
-          rt_pos_n < 1
-            ? mat_particle_shadow_with_0
-            : mat_particle_shadow_with_1;
-        // obj_1.material =
-        // obj_2.material =
-        // obj_3.material = mat_obj_shadow;
-
-        cam_s.position.set(
-          10 * Math.cos(0.18 * my_time),
-          8,
-          -10 * Math.sin(0.18 * my_time)
-        );
-        cam_s.lookAt(0, -1.5, 0);
-
-        ren.setRenderTarget(rt_shadow);
-        ren.setClearColor(0x000000, 1); //★ 1 זה אלפא
-        ren.render(scene, cam_s);
-
-        // =============================================================================== //
-        uni_time.value = my_time;
-        uni_hue.value = ctr.hue;
-        uni_shadow_matrix.value = new THREE.Matrix4()
-          .set(0.5, 0, 0, 0.5, 0, 0.5, 0, 0.5, 0, 0, 1, 0, 0, 0, 0, 1)
-          .multiply(cam_s.projectionMatrix)
-          .multiply(cam_s.matrixWorldInverse);
-        uni_shadow_camera_world_matrix.value = cam_s.matrixWorld;
-        uni_bias.value = ctr.bias;
-        uni_light_pos_view.value = cam_s.position
-          .clone()
-          .applyMatrix4(cam.matrixWorldInverse);
-        uni_light_dir_view.value = uni_light_pos_view.value.clone().normalize();
-        if (ctr.hue == 0 || ctr.hue == 1) {
-          uni_light_col.value = new THREE.Vector3(1, 1, 1);
-          uni_bg_col.value = new THREE.Vector3(0, 0, 0);
-        } else {
-          r = 1 + Math.cos(6.28 * ctr.hue);
-          g = 1 + Math.cos(6.28 * ctr.hue + 2.1);
-          b = 1 + Math.cos(6.28 * ctr.hue + 4.2);
-          uni_light_col.value = new THREE.Vector3(
-            0.2 + 0.4 * r,
-            0.1 + 0.4 * g,
-            0.2 + 0.4 * b
-          );
-          uni_bg_col.value = new THREE.Vector3(0.09 * r, 0.07 * g, 0.08 * b);
-        }
-
-        uni_light_pos.value = cam_s.position;
-        uni_light_dir.value = cam_s.position.clone().normalize();
-
-        capsules.material =
-          rt_pos_n < 1 ? mat_particle_with_0 : mat_particle_with_1;
-        // obj_1.material =
-        // obj_2.material =
-        // obj_3.material = mat_obj;
-
-        if (ctr.is_pp) {
-          const u = new THREE.Vector2();
-          ren.getSize(u);
-          w = dpr * u.width;
-          h = dpr * u.height;
-          if (w !== rt_scene.width || h !== rt_scene.height) {
-            rt_scene.setSize(w, h);
-            rt_only_particles.setSize(w, h);
-            rt_bloom.setSize(w, h);
-            uni_wh.value.set(w, h);
-            for (i = 0; i < 5; i++) {
-              w = Math.round(w / 2);
-              h = Math.round(h / 2);
-              rt_blur[i].setSize(w, h);
-            }
-          }
-
-          ren.setRenderTarget(rt_scene);
-          ren.render(scene, cam);
-
-          plane_o.material = mat_only_particles;
-          ren.setRenderTarget(rt_only_particles);
-          ren.render(scene_o, cam_o);
-
-          w = rt_scene.width;
-          h = rt_scene.height;
-          for (i = 0; i < 5; i++) {
-            plane_o.material = mat_blur[i];
-            w = Math.round(w / 2);
-            h = Math.round(h / 2);
-            uni_blur_v.value.set(0.85 / w, 0.85 / h);
-            ren.setRenderTarget(rt_blur[i]);
-            ren.render(scene_o, cam_o);
-          }
-
-          plane_o.material = mat_bloom;
-          ren.setRenderTarget(rt_bloom);
-          ren.render(scene_o, cam_o);
-
-          // =============================================================================== //
-          plane_o.material = mat_show;
-          ren.setRenderTarget(null);
-          ren.render(scene_o, cam_o);
-        } else {
-          ren.setRenderTarget(null);
-          ren.render(scene, cam);
-        }
-
-        // =============================================================================== //
-        my_time += t;
-        my_stats.update();
-        my_orbit_controls.update();
-      }
-
-      // =============================================================================== //
-      // Professional Control Panel
-      // =============================================================================== //
-
-      function createControlPanel() {
-        const panel = document.getElementById('control-panel');
-        const panelBody = panel.querySelector('.panel-body');
-        const toggleBtn = panel.querySelector('.panel-toggle');
-
-        // Toggle panel and resize canvas
-        toggleBtn.addEventListener('click', () => {
-          panel.classList.toggle('collapsed');
-
-          // Wait for CSS transition to complete, then resize
-          setTimeout(() => {
-            onWindowResize();
-          }, 400); // Match the CSS transition duration
-        });
-
-        // Create knob control
-        function createKnob(label, min, max, value, onChange) {
-          const knobControl = document.createElement('div');
-          knobControl.className = 'knob-control';
-
-          const knobLabel = document.createElement('div');
-          knobLabel.className = 'knob-label';
-          knobLabel.textContent = label;
-
-          const knobWrapper = document.createElement('div');
-          knobWrapper.className = 'knob-wrapper';
-
-          const rotation = ((value - min) / (max - min)) * 270 - 135;
-
-          knobWrapper.innerHTML = `
+    }
+
+    ren.setRenderTarget(rt_scene);
+    ren.render(scene, cam);
+
+    plane_o.material = mat_only_particles;
+    ren.setRenderTarget(rt_only_particles);
+    ren.render(scene_o, cam_o);
+
+    w = rt_scene.width;
+    h = rt_scene.height;
+    for (i = 0; i < 5; i++) {
+      plane_o.material = mat_blur[i];
+      w = Math.round(w / 2);
+      h = Math.round(h / 2);
+      uni_blur_v.value.set(0.85 / w, 0.85 / h);
+      ren.setRenderTarget(rt_blur[i]);
+      ren.render(scene_o, cam_o);
+    }
+
+    plane_o.material = mat_bloom;
+    ren.setRenderTarget(rt_bloom);
+    ren.render(scene_o, cam_o);
+
+    // =============================================================================== //
+    plane_o.material = mat_show;
+    ren.setRenderTarget(null);
+    ren.render(scene_o, cam_o);
+  } else {
+    ren.setRenderTarget(null);
+    ren.render(scene, cam);
+  }
+
+  // =============================================================================== //
+  my_time += t;
+  my_stats.update();
+  my_orbit_controls.update();
+}
+
+// =============================================================================== //
+// Professional Control Panel
+// =============================================================================== //
+
+function createControlPanel() {
+  const panel = document.getElementById('control-panel');
+  const panelBody = panel.querySelector('.panel-body');
+  const toggleBtn = panel.querySelector('.panel-toggle');
+
+  // Toggle panel and resize canvas
+  toggleBtn.addEventListener('click', () => {
+    panel.classList.toggle('collapsed');
+
+    // Wait for CSS transition to complete, then resize
+    setTimeout(() => {
+      onWindowResize();
+    }, 400); // Match the CSS transition duration
+  });
+
+  // Create knob control
+  function createKnob(label, min, max, value, onChange) {
+    const knobControl = document.createElement('div');
+    knobControl.className = 'knob-control';
+
+    const knobLabel = document.createElement('div');
+    knobLabel.className = 'knob-label';
+    knobLabel.textContent = label;
+
+    const knobWrapper = document.createElement('div');
+    knobWrapper.className = 'knob-wrapper';
+
+    const rotation = ((value - min) / (max - min)) * 270 - 135;
+
+    knobWrapper.innerHTML = `
             <div class="knob-outer" style="transform: rotate(${rotation}deg)">
               <div class="knob-inner"></div>
               <div class="knob-indicator"></div>
@@ -1829,486 +1829,494 @@
             <div class="knob-value">${value.toFixed(2)}</div>
           `;
 
-          // Add drag interaction
-          let isDragging = false;
-          let startY = 0;
-          let startValue = value;
+    // Add drag interaction
+    let isDragging = false;
+    let startY = 0;
+    let startValue = value;
 
-          knobWrapper.addEventListener('mousedown', (e) => {
-            isDragging = true;
-            startY = e.clientY;
-            startValue = parseFloat(knobWrapper.querySelector('.knob-value').textContent);
-            e.preventDefault();
-          });
+    knobWrapper.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      startY = e.clientY;
+      startValue = parseFloat(knobWrapper.querySelector('.knob-value').textContent);
+      e.preventDefault();
+    });
 
-          document.addEventListener('mousemove', (e) => {
-            if (!isDragging) return;
+    document.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
 
-            const delta = (startY - e.clientY) * 0.01;
-            let newValue = startValue + delta * (max - min);
-            newValue = Math.max(min, Math.min(max, newValue));
+      const delta = (startY - e.clientY) * 0.01;
+      let newValue = startValue + delta * (max - min);
+      newValue = Math.max(min, Math.min(max, newValue));
 
-            const rotation = ((newValue - min) / (max - min)) * 270 - 135;
-            knobWrapper.querySelector('.knob-outer').style.transform = `rotate(${rotation}deg)`;
-            knobWrapper.querySelector('.knob-value').textContent = newValue.toFixed(2);
+      const rotation = ((newValue - min) / (max - min)) * 270 - 135;
+      knobWrapper.querySelector('.knob-outer').style.transform = `rotate(${rotation}deg)`;
+      knobWrapper.querySelector('.knob-value').textContent = newValue.toFixed(2);
 
-            onChange(newValue);
-          });
+      onChange(newValue);
+    });
 
-          document.addEventListener('mouseup', () => {
-            isDragging = false;
-          });
+    document.addEventListener('mouseup', () => {
+      isDragging = false;
+    });
 
-          knobControl.appendChild(knobLabel);
-          knobControl.appendChild(knobWrapper);
+    knobControl.appendChild(knobLabel);
+    knobControl.appendChild(knobWrapper);
 
-          return knobControl;
-        }
+    return knobControl;
+  }
 
-        // Create toggle switch
-        function createToggle(label, value, onChange) {
-          const toggleControl = document.createElement('div');
-          toggleControl.className = 'toggle-control';
+  // Create toggle switch
+  function createToggle(label, value, onChange) {
+    const toggleControl = document.createElement('div');
+    toggleControl.className = 'toggle-control';
 
-          const toggleLabel = document.createElement('div');
-          toggleLabel.className = 'toggle-label';
-          toggleLabel.textContent = label;
+    const toggleLabel = document.createElement('div');
+    toggleLabel.className = 'toggle-label';
+    toggleLabel.textContent = label;
 
-          const toggleSwitch = document.createElement('div');
-          toggleSwitch.className = 'toggle-switch' + (value ? ' active' : '');
-          toggleSwitch.innerHTML = '<div class="toggle-switch-handle"></div>';
+    const toggleSwitch = document.createElement('div');
+    toggleSwitch.className = 'toggle-switch' + (value ? ' active' : '');
+    toggleSwitch.innerHTML = '<div class="toggle-switch-handle"></div>';
 
-          toggleSwitch.addEventListener('click', () => {
-            toggleSwitch.classList.toggle('active');
-            onChange(toggleSwitch.classList.contains('active'));
-          });
+    toggleSwitch.addEventListener('click', () => {
+      toggleSwitch.classList.toggle('active');
+      onChange(toggleSwitch.classList.contains('active'));
+    });
 
-          toggleControl.appendChild(toggleLabel);
-          toggleControl.appendChild(toggleSwitch);
+    toggleControl.appendChild(toggleLabel);
+    toggleControl.appendChild(toggleSwitch);
 
-          return toggleControl;
-        }
+    return toggleControl;
+  }
 
-        // Create button
-        function createButton(label, onClick) {
-          const buttonControl = document.createElement('div');
-          buttonControl.className = 'button-control';
+  // Create button
+  function createButton(label, onClick) {
+    const buttonControl = document.createElement('div');
+    buttonControl.className = 'button-control';
 
-          const buttonLabel = document.createElement('div');
-          buttonLabel.className = 'button-control-label';
-          buttonLabel.textContent = label;
+    const buttonLabel = document.createElement('div');
+    buttonLabel.className = 'button-control-label';
+    buttonLabel.textContent = label;
 
-          const button = document.createElement('button');
-          button.className = 'button-control-btn';
-          button.textContent = 'הפעל';
-          button.addEventListener('click', onClick);
+    const button = document.createElement('button');
+    button.className = 'button-control-btn';
+    button.textContent = 'הפעל';
+    button.addEventListener('click', onClick);
 
-          buttonControl.appendChild(buttonLabel);
-          buttonControl.appendChild(button);
+    buttonControl.appendChild(buttonLabel);
+    buttonControl.appendChild(button);
 
-          return buttonControl;
-        }
+    return buttonControl;
+  }
 
-        // Create control groups
-        const mainGroup = document.createElement('div');
-        mainGroup.className = 'control-group';
-        mainGroup.innerHTML = '<div class="control-group-title">בקרים ראשיים</div>';
+  // Create control groups
+  const mainGroup = document.createElement('div');
+  mainGroup.className = 'control-group';
+  mainGroup.innerHTML = '<div class="control-group-title">בקרים ראשיים</div>';
 
-        mainGroup.appendChild(createToggle('זוהר', ctr.is_pp, (val) => {
-          ctr.is_pp = val;
-          updateDisplayStatus();
-        }));
+  mainGroup.appendChild(createToggle('זוהר', ctr.is_pp, (val) => {
+    ctr.is_pp = val;
+    updateDisplayStatus();
+  }));
 
-        mainGroup.appendChild(createKnob('מהירות זמן', 0, 2, ctr.timespeed, (val) => {
-          ctr.timespeed = val;
-          updateDisplayStatus();
-        }));
+  mainGroup.appendChild(createKnob('מהירות זמן', 0, 2, ctr.timespeed, (val) => {
+    ctr.timespeed = val;
+    updateDisplayStatus();
+  }));
 
-        const visualGroup = document.createElement('div');
-        visualGroup.className = 'control-group';
-        visualGroup.innerHTML = '<div class="control-group-title">אפקטים חזותיים</div>';
+  const visualGroup = document.createElement('div');
+  visualGroup.className = 'control-group';
+  visualGroup.innerHTML = '<div class="control-group-title">אפקטים חזותיים</div>';
 
-        visualGroup.appendChild(createKnob('גוון', 0, 1, ctr.hue, (val) => {
-          ctr.hue = val;
-        }));
+  visualGroup.appendChild(createKnob('גוון', 0, 1, ctr.hue, (val) => {
+    ctr.hue = val;
+  }));
 
-        visualGroup.appendChild(createKnob('הטיה', 0.001, 0.2, ctr.bias, (val) => {
-          ctr.bias = val;
-        }));
+  visualGroup.appendChild(createKnob('הטיה', 0.001, 0.2, ctr.bias, (val) => {
+    ctr.bias = val;
+  }));
 
-        const particleGroup = document.createElement('div');
-        particleGroup.className = 'control-group';
-        particleGroup.innerHTML = '<div class="control-group-title">חלקיקים</div>';
+  const particleGroup = document.createElement('div');
+  particleGroup.className = 'control-group';
+  particleGroup.innerHTML = '<div class="control-group-title">חלקיקים</div>';
 
-        particleGroup.appendChild(createKnob('כמות', 100, 1000000, ctr.count, (val) => {
-          ctr.count = Math.round(val);
-        }));
+  particleGroup.appendChild(createKnob('כמות', 100, 1000000, ctr.count, (val) => {
+    ctr.count = Math.round(val);
+  }));
 
-        particleGroup.appendChild(createKnob('גודל', 0, 2, ctr.master_size, (val) => {
-          ctr.master_size = val;
-        }));
+  particleGroup.appendChild(createKnob('גודל', 0, 2, ctr.master_size, (val) => {
+    ctr.master_size = val;
+  }));
 
-        particleGroup.appendChild(createKnob('כוח', 0, 2, ctr.master_power, (val) => {
-          ctr.master_power = val;
-        }));
+  particleGroup.appendChild(createKnob('כוח', 0, 2, ctr.master_power, (val) => {
+    ctr.master_power = val;
+  }));
 
-        particleGroup.appendChild(createKnob('מטבוליזם', 0, 2, ctr.master_metabolism, (val) => {
-          ctr.master_metabolism = val;
-        }));
+  particleGroup.appendChild(createKnob('מטבוליזם', 0, 2, ctr.master_metabolism, (val) => {
+    ctr.master_metabolism = val;
+  }));
 
-        const motionGroup = document.createElement('div');
-        motionGroup.className = 'control-group';
-        motionGroup.innerHTML = '<div class="control-group-title">תנועה</div>';
+  const motionGroup = document.createElement('div');
+  motionGroup.className = 'control-group';
+  motionGroup.innerHTML = '<div class="control-group-title">תנועה</div>';
 
-        motionGroup.appendChild(createKnob('סיבוב מהירות', 0, 2, ctr.spin_speed, (val) => {
-          ctr.spin_speed = val;
-        }));
+  motionGroup.appendChild(createKnob('סיבוב מהירות', 0, 2, ctr.spin_speed, (val) => {
+    ctr.spin_speed = val;
+  }));
 
-        motionGroup.appendChild(createKnob('סיבוב סקאלה', 0, 2, ctr.spin_scale, (val) => {
-          ctr.spin_scale = val;
-        }));
+  motionGroup.appendChild(createKnob('סיבוב סקאלה', 0, 2, ctr.spin_scale, (val) => {
+    ctr.spin_scale = val;
+  }));
 
-        motionGroup.appendChild(createKnob('פרוותי', 0, 2, ctr.shaggy, (val) => {
-          ctr.shaggy = val;
-        }));
+  motionGroup.appendChild(createKnob('פרוותי', 0, 2, ctr.shaggy, (val) => {
+    ctr.shaggy = val;
+  }));
 
-        motionGroup.appendChild(createKnob('קפסולה', 0, 2, ctr.capsule, (val) => {
-          ctr.capsule = val;
-        }));
+  motionGroup.appendChild(createKnob('קפסולה', 0, 2, ctr.capsule, (val) => {
+    ctr.capsule = val;
+  }));
 
-        panelBody.appendChild(mainGroup);
-        panelBody.appendChild(visualGroup);
-        panelBody.appendChild(particleGroup);
-        panelBody.appendChild(motionGroup);
+  panelBody.appendChild(mainGroup);
+  panelBody.appendChild(visualGroup);
+  panelBody.appendChild(particleGroup);
+  panelBody.appendChild(motionGroup);
 
-        // Create presets
-        createPresets();
+  // Create presets
+  createPresets();
 
-        // Start with panel closed (keep the 'collapsed' class from HTML)
-        // panel.classList.remove('collapsed');
-      }
+  // Start with panel closed (keep the 'collapsed' class from HTML)
+  // panel.classList.remove('collapsed');
+}
 
-      // Define 5 impressive presets for new panel
-      const customPresets = [
-        {
-          name: 'מצב קלאסי',
-          nameEn: 'Classic',
-          description: 'המראה המקורי והאלגנטי',
-          color: '#3b82f6',
-          config: {
-            is_pp: true,
-            timespeed: 2,
-            hue: 1,
-            bias: 0.1,
-            count: 600000,
-            master_size: 0.5,
-            master_power: 2,
-            master_metabolism: 2,
-            spin_speed: 0,
-            spin_scale: 0.5,
-            shaggy: 0,
-            capsule: 1
-          }
-        },
-        {
-          name: 'מצב פראי',
-          nameEn: 'Wild',
-          description: 'תנועה כאוטית ומהירה',
-          color: '#ef4444',
-          config: {
-            is_pp: true,
-            timespeed: 1,
-            hue: 0.8,
-            bias: 0.5,
-            count: 250000,
-            master_size: 0.5,
-            master_power: 1.9,
-            master_metabolism: 1.5,
-            spin_speed: 1.8,
-            spin_scale: 0.5,
-            shaggy: 2,
-            capsule: 0.5
-          }
-        },
-        {
-          name: 'אנרגיה קוסמית',
-          nameEn: 'Cosmic',
-          description: 'תנועה חלקה ואווירית',
-          color: '#8b5cf6',
-          config: {
-            is_pp: true,
-            timespeed: 0.5,
-            hue: 0.65,
-            bias: 0.1,
-            count: 400000,
-            master_size: 0.6,
-            master_power: 0.8,
-            master_metabolism: 0.5,
-            spin_speed: 0.2,
-            spin_scale: 1.5,
-            shaggy: 0.8,
-            capsule: 1.5
-          }
-        },
-        {
-          name: 'דופק אלקטרוני',
-          nameEn: 'Electronic',
-          description: 'פולסציות מהירות וחדות',
-          color: '#06b6d4',
-          config: {
-            is_pp: true,
-            timespeed: 1.8,
-            hue: 0.55,
-            bias: 0.15,
-            count: 300000,
-            master_size: 1.2,
-            master_power: 1.5,
-            master_metabolism: 1.5,
-            spin_speed: 1.8,
-            spin_scale: 0.8,
-            shaggy: 0.2,
-            capsule: 0.5
-          }
-        },
-        {
-          name: 'חלום רך',
-          nameEn: 'Soft Dream',
-          description: 'תנועה עדינה ומרגיעה',
-          color: '#ec4899',
-          config: {
-            is_pp: true,
-            timespeed: 0.3,
-            hue: 0.4,
-            bias: 0.05,
-            count: 200000,
-            master_size: 0.8,
-            master_power: 0.6,
-            master_metabolism: 0.4,
-            spin_speed: 0.1,
-            spin_scale: 0.6,
-            shaggy: 1.5,
-            capsule: 1.8
-          }
-        },
-        {
-          name: 'מצב צבעוני',
-          nameEn: 'Colorful',
-          description: 'פרצוף צבעוני ומהיר',
-          color: '#f59e0b',
-          config: {
-            is_pp: true,
-            timespeed: 1.0,
-            hue: 0.5,
-            bias: 0.1,
-            count: 300000,
-            master_size: 1.0,
-            master_power: 1.2,
-            master_metabolism: 1.0,
-            spin_speed: 1.5,
-            spin_scale: 1.0,
-            shaggy: 1.4,
-            capsule: 1.0
-          }
-        },
-        {
-          name: 'מהירות נמוכה',
-          nameEn: 'Slow Motion',
-          description: 'זרימה איטית ורגועה',
-          color: '#10b981',
-          config: {
-            is_pp: true,
-            timespeed: 0.5,
-            hue: 0.5,
-            bias: 0.1,
-            count: 300000,
-            master_size: 1.0,
-            master_power: 1.0,
-            master_metabolism: 0.5,
-            spin_speed: 0.5,
-            spin_scale: 1.0,
-            shaggy: 1.0,
-            capsule: 1.0
-          }
-        },
-        {
-          name: 'מהירות גבוהה',
-          nameEn: 'High Speed',
-          description: 'אנרגיה מטורפת',
-          color: '#f43f5e',
-          config: {
-            is_pp: true,
-            timespeed: 1.8,
-            hue: 0.5,
-            bias: 0.1,
-            count: 300000,
-            master_size: 1.0,
-            master_power: 1.0,
-            master_metabolism: 1.5,
-            spin_speed: 1.8,
-            spin_scale: 1.0,
-            shaggy: 1.0,
-            capsule: 1.0
-          }
-        },
-        {
-          name: 'טורוס גדול',
-          nameEn: 'Big Torus',
-          description: 'צורה עבה ומרשימה',
-          color: '#14b8a6',
-          config: {
-            is_pp: true,
-            timespeed: 1.0,
-            hue: 0.5,
-            bias: 0.1,
-            count: Math.floor(0.7 * 1048576), // 0.7 * MAXPARTICLENUM
-            master_size: 1.5,
-            master_power: 1.0,
-            master_metabolism: 1.0,
-            spin_speed: 1.0,
-            spin_scale: 0.6,
-            shaggy: 1.0,
-            capsule: 0.3
-          }
-        },
-        {
-          name: 'שובל ארוך',
-          nameEn: 'Long Trail',
-          description: 'שובל מסתורי ומרהיב',
-          color: '#a855f7',
-          config: {
-            is_pp: true,
-            timespeed: 1.0,
-            hue: 0.5,
-            bias: 0.1,
-            count: 300000,
-            master_size: 1.2,
-            master_power: 1.0,
-            master_metabolism: 0.4,
-            spin_speed: 1.0,
-            spin_scale: 1.8,
-            shaggy: 1.0,
-            capsule: 2
-          }
-        },
-        {
-          name: 'נקודות מינימליסטיות',
-          nameEn: 'Minimalist',
-          description: 'פשטות אלגנטית',
-          color: '#64748b',
-          config: {
-            is_pp: true,
-            timespeed: 1.0,
-            hue: 0,
-            bias: 0.1,
-            count: 300000,
-            master_size: 0.5,
-            master_power: 1.0,
-            master_metabolism: 1.0,
-            spin_speed: 1.0,
-            spin_scale: 1.5,
-            shaggy: 1.0,
-            capsule: 0.2
-          }
-        }
-      ];
+// Define 5 impressive presets for new panel
+const customPresets = [
+  {
+    name: 'מצב קלאסי',
+    nameEn: 'Classic',
+    description: 'המראה המקורי והאלגנטי',
+    color: '#3b82f6',
+    config: {
+      is_pp: true,
+      timespeed: 2,
+      hue: 1,
+      bias: 0.1,
+      count: 600000,
+      master_size: 0.5,
+      master_power: 2,
+      master_metabolism: 2,
+      spin_speed: 0,
+      spin_scale: 0.5,
+      shaggy: 0,
+      capsule: 1
+    }
+  },
+  {
+    name: 'מצב פראי',
+    nameEn: 'Wild',
+    description: 'תנועה כאוטית ומהירה',
+    color: '#ef4444',
+    config: {
+      is_pp: true,
+      timespeed: 1,
+      hue: 0.8,
+      bias: 0.5,
+      count: 250000,
+      master_size: 0.5,
+      master_power: 1.9,
+      master_metabolism: 1.5,
+      spin_speed: 1.8,
+      spin_scale: 0.5,
+      shaggy: 2,
+      capsule: 0.5
+    }
+  },
+  {
+    name: 'אנרגיה קוסמית',
+    nameEn: 'Cosmic',
+    description: 'תנועה חלקה ואווירית',
+    color: '#8b5cf6',
+    config: {
+      is_pp: true,
+      timespeed: 0.5,
+      hue: 0.65,
+      bias: 0.1,
+      count: 400000,
+      master_size: 0.6,
+      master_power: 0.8,
+      master_metabolism: 0.5,
+      spin_speed: 0.2,
+      spin_scale: 1.5,
+      shaggy: 0.8,
+      capsule: 1.5
+    }
+  },
+  {
+    name: 'דופק אלקטרוני',
+    nameEn: 'Electronic',
+    description: 'פולסציות מהירות וחדות',
+    color: '#06b6d4',
+    config: {
+      is_pp: true,
+      timespeed: 1.8,
+      hue: 0.55,
+      bias: 0.15,
+      count: 300000,
+      master_size: 1.2,
+      master_power: 1.5,
+      master_metabolism: 1.5,
+      spin_speed: 1.8,
+      spin_scale: 0.8,
+      shaggy: 0.2,
+      capsule: 0.5
+    }
+  },
+  {
+    name: 'חלום רך',
+    nameEn: 'Soft Dream',
+    description: 'תנועה עדינה ומרגיעה',
+    color: '#ec4899',
+    config: {
+      is_pp: true,
+      timespeed: 0.3,
+      hue: 0.4,
+      bias: 0.05,
+      count: 200000,
+      master_size: 0.8,
+      master_power: 0.6,
+      master_metabolism: 0.4,
+      spin_speed: 0.1,
+      spin_scale: 0.6,
+      shaggy: 1.5,
+      capsule: 1.8
+    }
+  },
+  {
+    name: 'מצב צבעוני',
+    nameEn: 'Colorful',
+    description: 'פרצוף צבעוני ומהיר',
+    color: '#f59e0b',
+    config: {
+      is_pp: true,
+      timespeed: 1.0,
+      hue: 0.5,
+      bias: 0.1,
+      count: 300000,
+      master_size: 1.0,
+      master_power: 1.2,
+      master_metabolism: 1.0,
+      spin_speed: 1.5,
+      spin_scale: 1.0,
+      shaggy: 1.4,
+      capsule: 1.0
+    }
+  },
+  {
+    name: 'מהירות נמוכה',
+    nameEn: 'Slow Motion',
+    description: 'זרימה איטית ורגועה',
+    color: '#10b981',
+    config: {
+      is_pp: true,
+      timespeed: 0.5,
+      hue: 0.5,
+      bias: 0.1,
+      count: 300000,
+      master_size: 1.0,
+      master_power: 1.0,
+      master_metabolism: 0.5,
+      spin_speed: 0.5,
+      spin_scale: 1.0,
+      shaggy: 1.0,
+      capsule: 1.0
+    }
+  },
+  {
+    name: 'מהירות גבוהה',
+    nameEn: 'High Speed',
+    description: 'אנרגיה מטורפת',
+    color: '#f43f5e',
+    config: {
+      is_pp: true,
+      timespeed: 1.8,
+      hue: 0.5,
+      bias: 0.1,
+      count: 300000,
+      master_size: 1.0,
+      master_power: 1.0,
+      master_metabolism: 1.5,
+      spin_speed: 1.8,
+      spin_scale: 1.0,
+      shaggy: 1.0,
+      capsule: 1.0
+    }
+  },
+  {
+    name: 'טורוס גדול',
+    nameEn: 'Big Torus',
+    description: 'צורה עבה ומרשימה',
+    color: '#14b8a6',
+    config: {
+      is_pp: true,
+      timespeed: 1.0,
+      hue: 0.5,
+      bias: 0.1,
+      count: Math.floor(0.7 * 1048576), // 0.7 * MAXPARTICLENUM
+      master_size: 1.5,
+      master_power: 1.0,
+      master_metabolism: 1.0,
+      spin_speed: 1.0,
+      spin_scale: 0.6,
+      shaggy: 1.0,
+      capsule: 0.3
+    }
+  },
+  {
+    name: 'שובל ארוך',
+    nameEn: 'Long Trail',
+    description: 'שובל מסתורי ומרהיב',
+    color: '#a855f7',
+    config: {
+      is_pp: true,
+      timespeed: 1.0,
+      hue: 0.5,
+      bias: 0.1,
+      count: 300000,
+      master_size: 1.2,
+      master_power: 1.0,
+      master_metabolism: 0.4,
+      spin_speed: 1.0,
+      spin_scale: 1.8,
+      shaggy: 1.0,
+      capsule: 2
+    }
+  },
+  {
+    name: 'נקודות מינימליסטיות',
+    nameEn: 'Minimalist',
+    description: 'פשטות אלגנטית',
+    color: '#64748b',
+    config: {
+      is_pp: true,
+      timespeed: 1.0,
+      hue: 0,
+      bias: 0.1,
+      count: 300000,
+      master_size: 0.5,
+      master_power: 1.0,
+      master_metabolism: 1.0,
+      spin_speed: 1.0,
+      spin_scale: 1.5,
+      shaggy: 1.0,
+      capsule: 0.2
+    }
+  }
+];
 
-      function createPresets() {
-        const presetsBody = document.getElementById('presets-tab');
-        if (!presetsBody) return;
+function createPresets() {
+  const presetsBody = document.getElementById('presets-tab');
+  if (!presetsBody) return;
 
-        presetsBody.innerHTML = '';
+  presetsBody.innerHTML = '';
 
-        customPresets.forEach((preset) => {
-          const presetCard = document.createElement('div');
-          presetCard.className = 'preset-card';
-          presetCard.style.setProperty('--preset-color', preset.color);
+  customPresets.forEach((preset) => {
+    const presetCard = document.createElement('div');
+    presetCard.className = 'preset-card';
+    presetCard.style.setProperty('--preset-color', preset.color);
 
-          presetCard.innerHTML = `
+    presetCard.innerHTML = `
             <div class="preset-info">
               <div class="preset-name">${preset.name}</div>
               <div class="preset-desc">${preset.description}</div>
             </div>
           `;
 
-          presetCard.addEventListener('click', () => {
-            applyPreset(preset);
-            // Visual feedback
-            document.querySelectorAll('.preset-card').forEach(c => c.classList.remove('active'));
-            presetCard.classList.add('active');
-          });
+    presetCard.addEventListener('click', () => {
+      applyPreset(preset);
+      // Visual feedback
+      document.querySelectorAll('.preset-card').forEach(c => c.classList.remove('active'));
+      presetCard.classList.add('active');
+    });
 
-          presetsBody.appendChild(presetCard);
-        });
+    presetsBody.appendChild(presetCard);
+  });
+}
+
+function applyPreset(preset) {
+  // Apply all configuration values
+  Object.keys(preset.config).forEach(key => {
+    if (ctr.hasOwnProperty(key)) {
+      ctr[key] = preset.config[key];
+    }
+  });
+
+  // Update all control displays
+  updateAllControls();
+}
+
+function updateAllControls() {
+  const panelBody = document.getElementById('controls-tab');
+  if (!panelBody) return;
+
+  // Update toggle switches
+  const toggles = panelBody.querySelectorAll('.toggle-control');
+  toggles.forEach(toggle => {
+    const label = toggle.querySelector('.toggle-label').textContent;
+    if (label === 'עיבוד-על') {
+      const checkbox = toggle.querySelector('.toggle-input');
+      checkbox.checked = ctr.is_pp;
+    }
+  });
+
+  // Update all knobs
+  const knobs = panelBody.querySelectorAll('.knob-control');
+  const knobMapping = [
+    { label: 'מהירות זמן', key: 'timespeed' },
+    { label: 'גוון', key: 'hue' },
+    { label: 'הטיה', key: 'bias' },
+    { label: 'כמות', key: 'count' },
+    { label: 'גודל', key: 'master_size' },
+    { label: 'עוצמה', key: 'master_power' },
+    { label: 'מטבוליזם', key: 'master_metabolism' },
+    { label: 'מהירות סיבוב', key: 'spin_speed' },
+    { label: 'סקלת סיבוב', key: 'spin_scale' },
+    { label: 'מרופט', key: 'shaggy' },
+    { label: 'קפסולה', key: 'capsule' }
+  ];
+
+  knobs.forEach((knob) => {
+    const label = knob.querySelector('.knob-label').textContent;
+    const mapping = knobMapping.find(m => m.label === label);
+    if (mapping && ctr.hasOwnProperty(mapping.key)) {
+      const value = ctr[mapping.key];
+      const valueDisplay = knob.querySelector('.knob-value');
+      const outer = knob.querySelector('.knob-outer');
+
+      // Get min/max from the knob's data or use defaults
+      let min = 0, max = 2;
+      if (mapping.key === 'count') {
+        min = 1000; max = 100000;
+      } else if (mapping.key === 'timespeed') {
+        min = 0; max = 5;
       }
 
-      function applyPreset(preset) {
-        // Apply all configuration values
-        Object.keys(preset.config).forEach(key => {
-          if (ctr.hasOwnProperty(key)) {
-            ctr[key] = preset.config[key];
-          }
-        });
+      valueDisplay.textContent = value.toFixed(2);
+      const rotation = ((value - min) / (max - min)) * 270 - 135;
+      outer.style.transform = `rotate(${rotation}deg)`;
+    }
+  });
+}
 
-        // Update all control displays
-        updateAllControls();
-      }
+// Initialize control panel after scene loads
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', createControlPanel);
+} else {
+  createControlPanel();
+}
 
-      function updateAllControls() {
-        const panelBody = document.getElementById('controls-tab');
-        if (!panelBody) return;
-
-        // Update toggle switches
-        const toggles = panelBody.querySelectorAll('.toggle-control');
-        toggles.forEach(toggle => {
-          const label = toggle.querySelector('.toggle-label').textContent;
-          if (label === 'עיבוד-על') {
-            const checkbox = toggle.querySelector('.toggle-input');
-            checkbox.checked = ctr.is_pp;
-          }
-        });
-
-        // Update all knobs
-        const knobs = panelBody.querySelectorAll('.knob-control');
-        const knobMapping = [
-          { label: 'מהירות זמן', key: 'timespeed' },
-          { label: 'גוון', key: 'hue' },
-          { label: 'הטיה', key: 'bias' },
-          { label: 'כמות', key: 'count' },
-          { label: 'גודל', key: 'master_size' },
-          { label: 'עוצמה', key: 'master_power' },
-          { label: 'מטבוליזם', key: 'master_metabolism' },
-          { label: 'מהירות סיבוב', key: 'spin_speed' },
-          { label: 'סקלת סיבוב', key: 'spin_scale' },
-          { label: 'מרופט', key: 'shaggy' },
-          { label: 'קפסולה', key: 'capsule' }
-        ];
-
-        knobs.forEach((knob) => {
-          const label = knob.querySelector('.knob-label').textContent;
-          const mapping = knobMapping.find(m => m.label === label);
-          if (mapping && ctr.hasOwnProperty(mapping.key)) {
-            const value = ctr[mapping.key];
-            const valueDisplay = knob.querySelector('.knob-value');
-            const outer = knob.querySelector('.knob-outer');
-
-            // Get min/max from the knob's data or use defaults
-            let min = 0, max = 2;
-            if (mapping.key === 'count') {
-              min = 1000; max = 100000;
-            } else if (mapping.key === 'timespeed') {
-              min = 0; max = 5;
-            }
-
-            valueDisplay.textContent = value.toFixed(2);
-            const rotation = ((value - min) / (max - min)) * 270 - 135;
-            outer.style.transform = `rotate(${rotation}deg)`;
-          }
-        });
-      }
-
-      // Initialize control panel after scene loads
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', createControlPanel);
-      } else {
-        createControlPanel();
-      }
+export async function handleAClick() {
+  const link = "https://github.com/ShaharFullStack";
+  document.getElementById('credit').addEventListener('click', (e) => {
+    e.preventDefault();
+    window.open(link, '_blank');
+  });
+}
