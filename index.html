@@ -18,6 +18,37 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   </head>
   <body>
+    <!-- Professional Control Panel -->
+    <div id="control-panel" class="control-panel collapsed">
+      <button class="panel-toggle" aria-label="Toggle Control Panel">
+        <span class="toggle-icon">לוח בקרה</span>
+      </button>
+
+      <div class="panel-header">
+        <h2>לוח בקרה</h2>
+        <div class="status-indicators">
+        </div>
+      </div>
+
+      <div class="panel-content">
+        <!-- Controls Section (Left) -->
+        <div class="panel-section controls-section">
+          <h3 class="section-title">בקרים</h3>
+          <div class="panel-body" id="controls-tab">
+            <!-- Controls will be injected here by JavaScript -->
+          </div>
+        </div>
+
+        <!-- Presets Section (Right) -->
+        <div class="panel-section presets-section">
+          <h3 class="section-title">פריסטים</h3>
+          <div class="panel-body" id="presets-tab">
+            <!-- Presets will be injected here by JavaScript -->
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div id="container_1">
       <div class="stats-display">
         <canvas

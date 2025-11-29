@@ -143,6 +143,7 @@
       // Create the main GUI controller
       const gui = new GUI({ title: "בקרי ניסוי" });
       gui.domElement.classList.add("custom-gui"); // Main controls folder
+      gui.domElement.style.display = 'none'; // Hide old GUI, we'll use custom panel
       const mainFolder = gui.addFolder("בקרים ראשיים");
       mainFolder
         .add(ctr, "is_pp")
@@ -1568,10 +1569,29 @@
 
       onWindowResize(); //★ קורא לפונקציה בעצמו פעם אחת בהתחלה
       function onWindowResize() {
-        const w = window.innerWidth;
-        const h = window.innerHeight;
-        ren.setSize(w, h);
+        const panel = document.getElementById('control-panel');
+        const isMobile = window.innerWidth < 768;
+        const isPanelOpen = panel && !panel.classList.contains('collapsed');
 
+        let w, h;
+
+        if (isPanelOpen) {
+          if (isMobile) {
+            // Mobile: panel takes top 50%, canvas takes bottom 50%
+            w = window.innerWidth;
+            h = window.innerHeight * 0.5;
+          } else {
+            // Desktop: panel takes right 50%, canvas takes left 50%
+            w = window.innerWidth * 0.5;
+            h = window.innerHeight;
+          }
+        } else {
+          // Panel closed: full screen
+          w = window.innerWidth;
+          h = window.innerHeight;
+        }
+
+        ren.setSize(w, h);
         cam.aspect = w / h;
         cam.updateProjectionMatrix();
       }
@@ -1766,4 +1786,529 @@
         my_time += t;
         my_stats.update();
         my_orbit_controls.update();
+      }
+
+      // =============================================================================== //
+      // Professional Control Panel
+      // =============================================================================== //
+
+      function createControlPanel() {
+        const panel = document.getElementById('control-panel');
+        const panelBody = panel.querySelector('.panel-body');
+        const toggleBtn = panel.querySelector('.panel-toggle');
+
+        // Toggle panel and resize canvas
+        toggleBtn.addEventListener('click', () => {
+          panel.classList.toggle('collapsed');
+
+          // Wait for CSS transition to complete, then resize
+          setTimeout(() => {
+            onWindowResize();
+          }, 400); // Match the CSS transition duration
+        });
+
+        // Create knob control
+        function createKnob(label, min, max, value, onChange) {
+          const knobControl = document.createElement('div');
+          knobControl.className = 'knob-control';
+
+          const knobLabel = document.createElement('div');
+          knobLabel.className = 'knob-label';
+          knobLabel.textContent = label;
+
+          const knobWrapper = document.createElement('div');
+          knobWrapper.className = 'knob-wrapper';
+
+          const rotation = ((value - min) / (max - min)) * 270 - 135;
+
+          knobWrapper.innerHTML = `
+            <div class="knob-outer" style="transform: rotate(${rotation}deg)">
+              <div class="knob-inner"></div>
+              <div class="knob-indicator"></div>
+            </div>
+            <div class="knob-value">${value.toFixed(2)}</div>
+          `;
+
+          // Add drag interaction
+          let isDragging = false;
+          let startY = 0;
+          let startValue = value;
+
+          knobWrapper.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            startY = e.clientY;
+            startValue = parseFloat(knobWrapper.querySelector('.knob-value').textContent);
+            e.preventDefault();
+          });
+
+          document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+
+            const delta = (startY - e.clientY) * 0.01;
+            let newValue = startValue + delta * (max - min);
+            newValue = Math.max(min, Math.min(max, newValue));
+
+            const rotation = ((newValue - min) / (max - min)) * 270 - 135;
+            knobWrapper.querySelector('.knob-outer').style.transform = `rotate(${rotation}deg)`;
+            knobWrapper.querySelector('.knob-value').textContent = newValue.toFixed(2);
+
+            onChange(newValue);
+          });
+
+          document.addEventListener('mouseup', () => {
+            isDragging = false;
+          });
+
+          knobControl.appendChild(knobLabel);
+          knobControl.appendChild(knobWrapper);
+
+          return knobControl;
+        }
+
+        // Create toggle switch
+        function createToggle(label, value, onChange) {
+          const toggleControl = document.createElement('div');
+          toggleControl.className = 'toggle-control';
+
+          const toggleLabel = document.createElement('div');
+          toggleLabel.className = 'toggle-label';
+          toggleLabel.textContent = label;
+
+          const toggleSwitch = document.createElement('div');
+          toggleSwitch.className = 'toggle-switch' + (value ? ' active' : '');
+          toggleSwitch.innerHTML = '<div class="toggle-switch-handle"></div>';
+
+          toggleSwitch.addEventListener('click', () => {
+            toggleSwitch.classList.toggle('active');
+            onChange(toggleSwitch.classList.contains('active'));
+          });
+
+          toggleControl.appendChild(toggleLabel);
+          toggleControl.appendChild(toggleSwitch);
+
+          return toggleControl;
+        }
+
+        // Create button
+        function createButton(label, onClick) {
+          const buttonControl = document.createElement('div');
+          buttonControl.className = 'button-control';
+
+          const buttonLabel = document.createElement('div');
+          buttonLabel.className = 'button-control-label';
+          buttonLabel.textContent = label;
+
+          const button = document.createElement('button');
+          button.className = 'button-control-btn';
+          button.textContent = 'הפעל';
+          button.addEventListener('click', onClick);
+
+          buttonControl.appendChild(buttonLabel);
+          buttonControl.appendChild(button);
+
+          return buttonControl;
+        }
+
+        // Create control groups
+        const mainGroup = document.createElement('div');
+        mainGroup.className = 'control-group';
+        mainGroup.innerHTML = '<div class="control-group-title">בקרים ראשיים</div>';
+
+        mainGroup.appendChild(createToggle('זוהר', ctr.is_pp, (val) => {
+          ctr.is_pp = val;
+          updateDisplayStatus();
+        }));
+
+        mainGroup.appendChild(createKnob('מהירות זמן', 0, 2, ctr.timespeed, (val) => {
+          ctr.timespeed = val;
+          updateDisplayStatus();
+        }));
+
+        const visualGroup = document.createElement('div');
+        visualGroup.className = 'control-group';
+        visualGroup.innerHTML = '<div class="control-group-title">אפקטים חזותיים</div>';
+
+        visualGroup.appendChild(createKnob('גוון', 0, 1, ctr.hue, (val) => {
+          ctr.hue = val;
+        }));
+
+        visualGroup.appendChild(createKnob('הטיה', 0.001, 0.2, ctr.bias, (val) => {
+          ctr.bias = val;
+        }));
+
+        const particleGroup = document.createElement('div');
+        particleGroup.className = 'control-group';
+        particleGroup.innerHTML = '<div class="control-group-title">חלקיקים</div>';
+
+        particleGroup.appendChild(createKnob('כמות', 100, 1000000, ctr.count, (val) => {
+          ctr.count = Math.round(val);
+        }));
+
+        particleGroup.appendChild(createKnob('גודל', 0, 2, ctr.master_size, (val) => {
+          ctr.master_size = val;
+        }));
+
+        particleGroup.appendChild(createKnob('כוח', 0, 2, ctr.master_power, (val) => {
+          ctr.master_power = val;
+        }));
+
+        particleGroup.appendChild(createKnob('מטבוליזם', 0, 2, ctr.master_metabolism, (val) => {
+          ctr.master_metabolism = val;
+        }));
+
+        const motionGroup = document.createElement('div');
+        motionGroup.className = 'control-group';
+        motionGroup.innerHTML = '<div class="control-group-title">תנועה</div>';
+
+        motionGroup.appendChild(createKnob('סיבוב מהירות', 0, 2, ctr.spin_speed, (val) => {
+          ctr.spin_speed = val;
+        }));
+
+        motionGroup.appendChild(createKnob('סיבוב סקאלה', 0, 2, ctr.spin_scale, (val) => {
+          ctr.spin_scale = val;
+        }));
+
+        motionGroup.appendChild(createKnob('פרוותי', 0, 2, ctr.shaggy, (val) => {
+          ctr.shaggy = val;
+        }));
+
+        motionGroup.appendChild(createKnob('קפסולה', 0, 2, ctr.capsule, (val) => {
+          ctr.capsule = val;
+        }));
+
+        panelBody.appendChild(mainGroup);
+        panelBody.appendChild(visualGroup);
+        panelBody.appendChild(particleGroup);
+        panelBody.appendChild(motionGroup);
+
+        // Create presets
+        createPresets();
+
+        // Start with panel closed (keep the 'collapsed' class from HTML)
+        // panel.classList.remove('collapsed');
+      }
+
+      // Define 5 impressive presets for new panel
+      const customPresets = [
+        {
+          name: 'מצב קלאסי',
+          nameEn: 'Classic',
+          description: 'המראה המקורי והאלגנטי',
+          color: '#3b82f6',
+          config: {
+            is_pp: true,
+            timespeed: 2,
+            hue: 1,
+            bias: 0.1,
+            count: 600000,
+            master_size: 0.5,
+            master_power: 2,
+            master_metabolism: 2,
+            spin_speed: 0,
+            spin_scale: 0.5,
+            shaggy: 0,
+            capsule: 1
+          }
+        },
+        {
+          name: 'מצב פראי',
+          nameEn: 'Wild',
+          description: 'תנועה כאוטית ומהירה',
+          color: '#ef4444',
+          config: {
+            is_pp: true,
+            timespeed: 1,
+            hue: 0.8,
+            bias: 0.5,
+            count: 250000,
+            master_size: 0.5,
+            master_power: 1.9,
+            master_metabolism: 1.5,
+            spin_speed: 1.8,
+            spin_scale: 0.5,
+            shaggy: 2,
+            capsule: 0.5
+          }
+        },
+        {
+          name: 'אנרגיה קוסמית',
+          nameEn: 'Cosmic',
+          description: 'תנועה חלקה ואווירית',
+          color: '#8b5cf6',
+          config: {
+            is_pp: true,
+            timespeed: 0.5,
+            hue: 0.65,
+            bias: 0.1,
+            count: 400000,
+            master_size: 0.6,
+            master_power: 0.8,
+            master_metabolism: 0.5,
+            spin_speed: 0.2,
+            spin_scale: 1.5,
+            shaggy: 0.8,
+            capsule: 1.5
+          }
+        },
+        {
+          name: 'דופק אלקטרוני',
+          nameEn: 'Electronic',
+          description: 'פולסציות מהירות וחדות',
+          color: '#06b6d4',
+          config: {
+            is_pp: true,
+            timespeed: 1.8,
+            hue: 0.55,
+            bias: 0.15,
+            count: 300000,
+            master_size: 1.2,
+            master_power: 1.5,
+            master_metabolism: 1.5,
+            spin_speed: 1.8,
+            spin_scale: 0.8,
+            shaggy: 0.2,
+            capsule: 0.5
+          }
+        },
+        {
+          name: 'חלום רך',
+          nameEn: 'Soft Dream',
+          description: 'תנועה עדינה ומרגיעה',
+          color: '#ec4899',
+          config: {
+            is_pp: true,
+            timespeed: 0.3,
+            hue: 0.4,
+            bias: 0.05,
+            count: 200000,
+            master_size: 0.8,
+            master_power: 0.6,
+            master_metabolism: 0.4,
+            spin_speed: 0.1,
+            spin_scale: 0.6,
+            shaggy: 1.5,
+            capsule: 1.8
+          }
+        },
+        {
+          name: 'מצב צבעוני',
+          nameEn: 'Colorful',
+          description: 'פרצוף צבעוני ומהיר',
+          color: '#f59e0b',
+          config: {
+            is_pp: true,
+            timespeed: 1.0,
+            hue: 0.5,
+            bias: 0.1,
+            count: 300000,
+            master_size: 1.0,
+            master_power: 1.2,
+            master_metabolism: 1.0,
+            spin_speed: 1.5,
+            spin_scale: 1.0,
+            shaggy: 1.4,
+            capsule: 1.0
+          }
+        },
+        {
+          name: 'מהירות נמוכה',
+          nameEn: 'Slow Motion',
+          description: 'זרימה איטית ורגועה',
+          color: '#10b981',
+          config: {
+            is_pp: true,
+            timespeed: 0.5,
+            hue: 0.5,
+            bias: 0.1,
+            count: 300000,
+            master_size: 1.0,
+            master_power: 1.0,
+            master_metabolism: 0.5,
+            spin_speed: 0.5,
+            spin_scale: 1.0,
+            shaggy: 1.0,
+            capsule: 1.0
+          }
+        },
+        {
+          name: 'מהירות גבוהה',
+          nameEn: 'High Speed',
+          description: 'אנרגיה מטורפת',
+          color: '#f43f5e',
+          config: {
+            is_pp: true,
+            timespeed: 1.8,
+            hue: 0.5,
+            bias: 0.1,
+            count: 300000,
+            master_size: 1.0,
+            master_power: 1.0,
+            master_metabolism: 1.5,
+            spin_speed: 1.8,
+            spin_scale: 1.0,
+            shaggy: 1.0,
+            capsule: 1.0
+          }
+        },
+        {
+          name: 'טורוס גדול',
+          nameEn: 'Big Torus',
+          description: 'צורה עבה ומרשימה',
+          color: '#14b8a6',
+          config: {
+            is_pp: true,
+            timespeed: 1.0,
+            hue: 0.5,
+            bias: 0.1,
+            count: Math.floor(0.7 * 1048576), // 0.7 * MAXPARTICLENUM
+            master_size: 1.5,
+            master_power: 1.0,
+            master_metabolism: 1.0,
+            spin_speed: 1.0,
+            spin_scale: 0.6,
+            shaggy: 1.0,
+            capsule: 0.3
+          }
+        },
+        {
+          name: 'שובל ארוך',
+          nameEn: 'Long Trail',
+          description: 'שובל מסתורי ומרהיב',
+          color: '#a855f7',
+          config: {
+            is_pp: true,
+            timespeed: 1.0,
+            hue: 0.5,
+            bias: 0.1,
+            count: 300000,
+            master_size: 1.2,
+            master_power: 1.0,
+            master_metabolism: 0.4,
+            spin_speed: 1.0,
+            spin_scale: 1.8,
+            shaggy: 1.0,
+            capsule: 2
+          }
+        },
+        {
+          name: 'נקודות מינימליסטיות',
+          nameEn: 'Minimalist',
+          description: 'פשטות אלגנטית',
+          color: '#64748b',
+          config: {
+            is_pp: true,
+            timespeed: 1.0,
+            hue: 0,
+            bias: 0.1,
+            count: 300000,
+            master_size: 0.5,
+            master_power: 1.0,
+            master_metabolism: 1.0,
+            spin_speed: 1.0,
+            spin_scale: 1.5,
+            shaggy: 1.0,
+            capsule: 0.2
+          }
+        }
+      ];
+
+      function createPresets() {
+        const presetsBody = document.getElementById('presets-tab');
+        if (!presetsBody) return;
+
+        presetsBody.innerHTML = '';
+
+        customPresets.forEach((preset) => {
+          const presetCard = document.createElement('div');
+          presetCard.className = 'preset-card';
+          presetCard.style.setProperty('--preset-color', preset.color);
+
+          presetCard.innerHTML = `
+            <div class="preset-info">
+              <div class="preset-name">${preset.name}</div>
+              <div class="preset-desc">${preset.description}</div>
+            </div>
+          `;
+
+          presetCard.addEventListener('click', () => {
+            applyPreset(preset);
+            // Visual feedback
+            document.querySelectorAll('.preset-card').forEach(c => c.classList.remove('active'));
+            presetCard.classList.add('active');
+          });
+
+          presetsBody.appendChild(presetCard);
+        });
+      }
+
+      function applyPreset(preset) {
+        // Apply all configuration values
+        Object.keys(preset.config).forEach(key => {
+          if (ctr.hasOwnProperty(key)) {
+            ctr[key] = preset.config[key];
+          }
+        });
+
+        // Update all control displays
+        updateAllControls();
+      }
+
+      function updateAllControls() {
+        const panelBody = document.getElementById('controls-tab');
+        if (!panelBody) return;
+
+        // Update toggle switches
+        const toggles = panelBody.querySelectorAll('.toggle-control');
+        toggles.forEach(toggle => {
+          const label = toggle.querySelector('.toggle-label').textContent;
+          if (label === 'עיבוד-על') {
+            const checkbox = toggle.querySelector('.toggle-input');
+            checkbox.checked = ctr.is_pp;
+          }
+        });
+
+        // Update all knobs
+        const knobs = panelBody.querySelectorAll('.knob-control');
+        const knobMapping = [
+          { label: 'מהירות זמן', key: 'timespeed' },
+          { label: 'גוון', key: 'hue' },
+          { label: 'הטיה', key: 'bias' },
+          { label: 'כמות', key: 'count' },
+          { label: 'גודל', key: 'master_size' },
+          { label: 'עוצמה', key: 'master_power' },
+          { label: 'מטבוליזם', key: 'master_metabolism' },
+          { label: 'מהירות סיבוב', key: 'spin_speed' },
+          { label: 'סקלת סיבוב', key: 'spin_scale' },
+          { label: 'מרופט', key: 'shaggy' },
+          { label: 'קפסולה', key: 'capsule' }
+        ];
+
+        knobs.forEach((knob) => {
+          const label = knob.querySelector('.knob-label').textContent;
+          const mapping = knobMapping.find(m => m.label === label);
+          if (mapping && ctr.hasOwnProperty(mapping.key)) {
+            const value = ctr[mapping.key];
+            const valueDisplay = knob.querySelector('.knob-value');
+            const outer = knob.querySelector('.knob-outer');
+
+            // Get min/max from the knob's data or use defaults
+            let min = 0, max = 2;
+            if (mapping.key === 'count') {
+              min = 1000; max = 100000;
+            } else if (mapping.key === 'timespeed') {
+              min = 0; max = 5;
+            }
+
+            valueDisplay.textContent = value.toFixed(2);
+            const rotation = ((value - min) / (max - min)) * 270 - 135;
+            outer.style.transform = `rotate(${rotation}deg)`;
+          }
+        });
+      }
+
+      // Initialize control panel after scene loads
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', createControlPanel);
+      } else {
+        createControlPanel();
       }
